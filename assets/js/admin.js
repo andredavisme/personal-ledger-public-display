@@ -4,19 +4,13 @@
  * AUTH: Gated via auth.js (Netlify Identity). Invite-only instance — any
  * authenticated user is an authorized admin. See auth.js migration guide.
  *
- * DATA: All submission data is loaded from Supabase via the
- * ledger.submissions_with_collision view, which surfaces reference_collision
- * flags for the admin. Correction reasons are persisted to
- * ledger.correction_reasons. Approve/reject write to ledger.submissions.
+ * DATA: Uses the shared supabase.js client (same as intake.js) to ensure
+ * consistent schema routing. Queries ledger.submissions_with_collision,
+ * ledger.correction_reasons, and child tables.
  */
 
 import Auth from './auth.js';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-// ─── Supabase Client ──────────────────────────────────────────────────────────
-const SUPABASE_URL  = 'https://hhyhulqngdkwsxhymmcd.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoeWh1bHFuZ2Rrd3N4aHltbWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMzEyMDEsImV4cCI6MjA5MjcwNzIwMX0.dmSy7Q8Je5lEY4XCFzwvfPnkBYLebPE0yZMhy6Y8czI';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+import supabase from './supabase.js';
 
 // ─── Auth Gate ────────────────────────────────────────────────────────────────
 const authGate  = document.getElementById('auth-gate');
@@ -40,8 +34,8 @@ logoutBtn.addEventListener('click', () => Auth.logout());
 Auth.initAuth();
 
 // ─── State ────────────────────────────────────────────────────────────────────
-let correctionReasons = [];  // loaded from ledger.correction_reasons
-let submissions       = [];  // loaded from ledger.submissions_with_collision
+let correctionReasons = [];
+let submissions       = [];
 
 // ─── Load All Data ────────────────────────────────────────────────────────────
 async function loadAll() {
@@ -50,7 +44,7 @@ async function loadAll() {
   renderPendingSubmissions();
 }
 
-// ─── Correction Reasons (Supabase-backed) ─────────────────────────────────────
+// ─── Correction Reasons ──────────────────────────────────────────────────────
 async function loadReasons() {
   const { data, error } = await supabase
     .schema('ledger')
@@ -81,9 +75,8 @@ async function addReason(label, description) {
   correctionReasons.push(data);
 }
 
-// ─── Submissions (Supabase-backed) ────────────────────────────────────────────
+// ─── Submissions ─────────────────────────────────────────────────────────────
 async function loadSubmissions() {
-  // ledger.submissions_with_collision adds reference_collision boolean
   const { data, error } = await supabase
     .schema('ledger')
     .from('submissions_with_collision')
@@ -92,7 +85,6 @@ async function loadSubmissions() {
     .order('submitted_at', { ascending: true });
   if (error) { console.error('[admin] loadSubmissions:', error); return; }
 
-  // Load child table data for each submission
   const rows = data || [];
   await Promise.all(rows.map(async s => {
     const [{ data: financials }, { data: budget }, { data: donations }] = await Promise.all([
@@ -149,7 +141,7 @@ async function linkSubmissions(sourceId, targetRef) {
   renderPendingSubmissions();
 }
 
-// ─── CSV Table Renderer ────────────────────────────────────────────────────────
+// ─── CSV Table Renderer ───────────────────────────────────────────────────────
 function renderCSVTable(rows) {
   if (!rows || rows.length === 0) return '<p class="field-hint">No data provided.</p>';
   const headers = Object.keys(rows[0]).filter(h => !['id','submission_id','sort_order'].includes(h));
@@ -166,7 +158,7 @@ function renderCSVTable(rows) {
     </div>`;
 }
 
-// ─── Collision Alert Banner ───────────────────────────────────────────────────
+// ─── Collision Alert Banner ──────────────────────────────────────────────────
 function buildCollisionBanner(s) {
   if (!s.reference_collision) return '';
   const siblings = submissions
@@ -181,7 +173,7 @@ function buildCollisionBanner(s) {
     </div>`;
 }
 
-// ─── Link Records Panel ───────────────────────────────────────────────────────
+// ─── Link Records Panel ──────────────────────────────────────────────────────
 function buildLinkPanel(s) {
   const otherRefs = [...new Set(
     submissions
@@ -199,7 +191,7 @@ function buildLinkPanel(s) {
     <details class="link-records-panel">
       <summary><strong>Link Records</strong> <span class="field-hint">Admin discretion</span></summary>
       ${currentLink}
-      <p class="field-hint">Associate this submission with another by choosing its reference ID. This is logged for audit purposes only — it does not merge or auto-approve either record.</p>
+      <p class="field-hint">Associate this submission with another by choosing its reference ID. Logged for audit purposes only — does not merge or auto-approve either record.</p>
       <div class="link-records-controls">
         <select id="link-target-${s.id}" class="link-select">
           <option value="">— Select a reference to link —</option>
@@ -217,10 +209,7 @@ function renderPendingSubmissions() {
   submissionsContainer.innerHTML = '';
 
   if (submissions.length === 0) {
-    submissionsContainer.innerHTML = `
-      <div class="empty-state">
-        <p>No pending submissions at this time.</p>
-      </div>`;
+    submissionsContainer.innerHTML = `<div class="empty-state"><p>No pending submissions at this time.</p></div>`;
     return;
   }
 
@@ -254,12 +243,12 @@ function renderPendingSubmissions() {
       ${buildCollisionBanner(s)}
 
       <div class="submission-card__body">
-        <p><strong>Mission:</strong> ${escHtml(s.mission || '')}
-        <p><strong>Values:</strong> ${escHtml(s.values || '')}
-        <p><strong>Local Vision:</strong> ${escHtml(s.local_vision || '')}
-        <p><strong>Universal Vision:</strong> ${s.universal_vision ? escHtml(s.universal_vision) : '<em>Not provided</em>'}
-        <p><strong>Donation Transparency:</strong> ${escHtml(s.donation_transparency || '')}
-        <p><strong>Application Transparency:</strong> ${s.application_transparency ? escHtml(s.application_transparency) : '<em>Not provided</em>'}
+        <p><strong>Mission:</strong> ${escHtml(s.mission || '')}</p>
+        <p><strong>Values:</strong> ${escHtml(s.values || '')}</p>
+        <p><strong>Local Vision:</strong> ${escHtml(s.local_vision || '')}</p>
+        <p><strong>Universal Vision:</strong> ${s.universal_vision ? escHtml(s.universal_vision) : '<em>Not provided</em>'}</p>
+        <p><strong>Donation Transparency:</strong> ${escHtml(s.donation_transparency || '')}</p>
+        <p><strong>Application Transparency:</strong> ${s.application_transparency ? escHtml(s.application_transparency) : '<em>Not provided</em>'}</p>
       </div>
 
       <div class="submission-card__csvs">
@@ -408,7 +397,7 @@ submissionsContainer.addEventListener('click', async e => {
   }
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 function escHtml(str) {
   if (str == null) return '';
   return String(str)
