@@ -5,60 +5,80 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Community Ledger — Administration</title>
   <link rel="stylesheet" href="assets/css/style.css" />
+  <!-- Netlify Identity Widget -->
+  <!-- MIGRATION: Remove this script tag when switching to Supabase Auth -->
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </head>
-<body>
-  <header class="site-header">
-    <div class="container">
-      <h1>Community Ledger</h1>
-      <nav>
-        <a href="index.html">Submit</a>
-        <a href="community.html">Community Pages</a>
-        <a href="admin.html" class="active">Admin</a>
-      </nav>
-    </div>
-  </header>
+<body class="admin-body">
 
-  <main class="container admin-page">
-    <section class="page-intro">
-      <h2>Administration</h2>
-      <p class="section-desc">Review pending submissions, approve for publication, or reject with structured correction reasons and optional notes.</p>
-      <div class="notice notice--warning">
-        <strong>Prototype only:</strong> This page is front-end compatible with GitHub Pages and uses placeholder data. Authentication, approval actions, email sending, and persistence will be connected after the backend is implemented.
+  <!-- Auth gate overlay: shown until identity confirmed -->
+  <div id="auth-gate" class="auth-gate">
+    <div class="auth-gate__box">
+      <h2>Community Ledger</h2>
+      <p>Administration access only.</p>
+      <button id="login-btn" class="btn btn--primary">Log In</button>
+    </div>
+  </div>
+
+  <!-- Admin UI: hidden until authenticated -->
+  <div id="admin-ui" style="display:none;">
+
+    <header class="site-header">
+      <div class="container">
+        <h1>Community Ledger</h1>
+        <nav>
+          <a href="index.html">Submit</a>
+          <a href="community.html">Community Pages</a>
+          <a href="admin.html" class="active">Admin</a>
+        </nav>
+        <button id="logout-btn" class="btn btn--small btn--secondary" style="margin-left:1.5rem;">Log Out</button>
       </div>
-    </section>
+    </header>
 
-    <section class="form-section">
-      <h3>Pending Submissions</h3>
-      <p class="section-desc">Each submission must contain all information necessary to create a Community Page.</p>
-      <div id="pending-submissions" class="admin-list"></div>
-    </section>
-
-    <section class="form-section">
-      <h3>Correction Reasons Manager</h3>
-      <p class="section-desc">Add, edit, deactivate, and reorder the checkbox reasons available during rejection review.</p>
-
-      <form id="reason-form" class="inline-form" novalidate>
-        <div class="field-group">
-          <label for="reason-label">Checkbox Label <span class="badge badge--required">Required</span></label>
-          <input type="text" id="reason-label" placeholder="Missing contact information" required />
+    <main class="container admin-page">
+      <section class="page-intro">
+        <h2>Administration</h2>
+        <p class="section-desc">Review pending submissions, approve for publication, or reject with structured correction reasons and optional notes.</p>
+        <div class="notice notice--warning">
+          <strong>Prototype:</strong> Data shown is placeholder. CSV previews are parsed and rendered programmatically from submission data — no file access required. Backend persistence and email will be connected after schema implementation.
         </div>
-        <div class="field-group">
-          <label for="reason-description">Email Description <span class="badge badge--required">Required</span></label>
-          <textarea id="reason-description" rows="3" placeholder="Explain why this information matters to the submission and community page." required></textarea>
-        </div>
-        <button type="submit" class="btn btn--primary">Add Reason</button>
-      </form>
+      </section>
 
-      <div id="reasons-manager" class="reasons-manager"></div>
-    </section>
-  </main>
+      <section class="form-section">
+        <h3>Pending Submissions</h3>
+        <p class="section-desc">Each submission must contain all information necessary to create a Community Page. Expand each section to review uploaded CSV data.</p>
+        <div id="pending-submissions" class="admin-list"></div>
+      </section>
 
-  <footer class="site-footer">
-    <div class="container">
-      <p>&copy; 2026 Community Ledger. All submissions reviewed before publication.</p>
-    </div>
-  </footer>
+      <section class="form-section">
+        <h3>Correction Reasons Manager</h3>
+        <p class="section-desc">Add, edit, deactivate, and reorder the checkbox reasons available during rejection review. Changes apply immediately to all pending submission panels.</p>
 
-  <script src="assets/js/admin.js"></script>
+        <form id="reason-form" class="inline-form" novalidate>
+          <div class="field-group">
+            <label for="reason-label">Checkbox Label <span class="badge badge--required">Required</span></label>
+            <input type="text" id="reason-label" placeholder="Missing contact information" required />
+          </div>
+          <div class="field-group">
+            <label for="reason-description">Email Description <span class="badge badge--required">Required</span></label>
+            <textarea id="reason-description" rows="3" placeholder="Explain why this information matters to the submission and community page." required></textarea>
+          </div>
+          <button type="submit" class="btn btn--primary">Add Reason</button>
+        </form>
+
+        <div id="reasons-manager" class="reasons-manager"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>&copy; 2026 Community Ledger. Administration area.</p>
+      </div>
+    </footer>
+
+  </div><!-- /admin-ui -->
+
+  <script src="assets/js/auth.js" type="module"></script>
+  <script src="assets/js/admin.js" type="module"></script>
 </body>
 </html>
