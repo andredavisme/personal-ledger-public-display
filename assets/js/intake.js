@@ -1,31 +1,34 @@
 /**
  * intake.js — Intake Form Handler
  *
- * Handles the community submission form:
- * 1. Client-side validation of all required fields and CSV files
- * 2. CSV parsing — programmatic read of uploaded files, no server required
- * 3. Submission to Supabase ledger schema:
- *    - ledger.submissions          (core form data)
- *    - ledger.submission_financials (parsed financial CSV rows)
- *    - ledger.submission_budget     (parsed budget CSV rows)
- *    - ledger.submission_donations  (parsed donation CSV rows)
- * 4. Confirmation modal — shown after database receipt is verified
+ * Flow:
+ * 1. Validate required text fields and CSV files
+ * 2. Parse CSVs in-browser
+ * 3. Insert ledger.submissions (core record)
+ * 4. Verify the insert landed in the database
+ * 5. Insert CSV child rows in parallel
+ * 6. Show confirmation modal with the submitter_reference echoed back
  *
- * KNOWN BEHAVIOUR:
- * - Donation CSV rows with an empty handle_or_address are skipped (not an error).
- *   The template includes placeholder rows for methods not actively used.
- * - This file must be loaded with type="module" in the HTML script tag.
+ * submitter_reference:
+ *   A free-text identifier chosen by the submitter (e.g. DAVIS-2026-001).
+ *   Required. Not unique-constrained — the admin is alerted via
+ *   ledger.submissions_with_collision view when the same reference
+ *   appears on more than one submission.
+ *
+ * NOTE: This file must be loaded with type="module".
  */
 
 import supabase from './supabase.js';
 
-const form  = document.getElementById('intake-form');
-const modal = document.getElementById('submission-modal');
-const modalCloseBtn = document.getElementById('modal-close-btn');
+const form           = document.getElementById('intake-form');
+const modal          = document.getElementById('submission-modal');
+const modalCloseBtn  = document.getElementById('modal-close-btn');
+const modalRefDisplay = document.getElementById('modal-ref-display');
 
-// ─── Modal ───────────────────────────────────────────────────────────────────
+// ─── Modal ──────────────────────────────────────────────────────────────
 
-function openModal() {
+function openModal(reference) {
+  if (modalRefDisplay) modalRefDisplay.textContent = reference || '—';
   modal.classList.add('is-open');
   modalCloseBtn.focus();
 }
@@ -35,18 +38,12 @@ function closeModal() {
 }
 
 modalCloseBtn?.addEventListener('click', closeModal);
-
-// Close on backdrop click
-modal?.addEventListener('click', e => {
-  if (e.target === modal) closeModal();
-});
-
-// Close on Escape
+modal?.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && modal.classList.contains('is-open')) closeModal();
+  if (e.key === 'Escape' && modal?.classList.contains('is-open')) closeModal();
 });
 
-// ─── CSV Parser ──────────────────────────────────────────────────────────────
+// ─── CSV Parser ─────────────────────────────────────────────────────────────
 
 function parseCSV(text) {
   const lines = text.trim().split('\n').filter(l => l.trim());
@@ -69,14 +66,12 @@ function readFile(file) {
   });
 }
 
-// ─── CSV Validators ─────────────────────────────────────────────────────────
+// ─── Validators ─────────────────────────────────────────────────────────────
 
 function validateFinancials(rows) {
   const errors = [];
-  const hasIncome  = rows.some(r => r.section === 'income');
-  const hasExpense = rows.some(r => r.section === 'expense');
-  if (!hasIncome)  errors.push('Financial statements must include at least one income row.');
-  if (!hasExpense) errors.push('Financial statements must include at least one expense row.');
+  if (!rows.some(r => r.section === 'income'))  errors.push('Financial statements must include at least one income row.');
+  if (!rows.some(r => r.section === 'expense')) errors.push('Financial statements must include at least one expense row.');
   rows.forEach((r, i) => {
     if (!r.name)   errors.push(`Row ${i + 2}: missing name.`);
     if (!r.amount || isNaN(Number(r.amount))) errors.push(`Row ${i + 2}: amount must be a number.`);
@@ -86,12 +81,12 @@ function validateFinancials(rows) {
 
 function validateBudget(rows) {
   const errors = [];
-  const validStatuses = ['purchased', 'expected', 'desired', 'contingency'];
-  const hasRequired = rows.some(r => ['purchased', 'expected', 'contingency'].includes(r.status));
-  if (!hasRequired) errors.push('Budget must include at least one purchased, expected, or contingency row.');
+  const valid = ['purchased', 'expected', 'desired', 'contingency'];
+  if (!rows.some(r => ['purchased', 'expected', 'contingency'].includes(r.status)))
+    errors.push('Budget must include at least one purchased, expected, or contingency row.');
   rows.forEach((r, i) => {
     if (!r.item) errors.push(`Row ${i + 2}: missing item name.`);
-    if (!validStatuses.includes(r.status)) errors.push(`Row ${i + 2}: status must be purchased, expected, desired, or contingency.`);
+    if (!valid.includes(r.status)) errors.push(`Row ${i + 2}: status must be purchased, expected, desired, or contingency.`);
   });
   return errors;
 }
@@ -99,63 +94,56 @@ function validateBudget(rows) {
 function validateDonations(rows) {
   const errors = [];
   const validMethods = ['paypal', 'stripe', 'postal', 'pos', 'manual', 'cryptocurrency'];
-  // Filter to rows that have a valid method with a populated handle — template rows without
-  // a handle are treated as placeholder-only and skipped, not an error.
-  const activeRows = rows.filter(r => r.method && validMethods.includes(r.method.toLowerCase()) && r.handle_or_address?.trim());
-  if (activeRows.length === 0) errors.push('At least one donation method with a handle or address is required.');
+  const active = rows.filter(r => r.method && validMethods.includes(r.method.toLowerCase()) && r.handle_or_address?.trim());
+  if (active.length === 0) errors.push('At least one donation method with a handle or address is required.');
   rows.forEach((r, i) => {
-    if (r.method && !validMethods.includes(r.method.toLowerCase())) {
-      errors.push(`Row ${i + 2}: method "${r.method}" is not recognised. Use PayPal, Stripe, Postal, POS, Manual, or Cryptocurrency.`);
-    }
+    if (r.method && !validMethods.includes(r.method.toLowerCase()))
+      errors.push(`Row ${i + 2}: "${r.method}" is not a recognised method.`);
   });
   return errors;
 }
 
-// ─── UI Helpers ─────────────────────────────────────────────────────────────────
+// ─── UI ────────────────────────────────────────────────────────────────────
 
 function showError(fieldId, message) {
   clearError(fieldId);
-  const field = document.getElementById(fieldId);
   const el = document.createElement('p');
   el.className = 'validation-error';
   el.textContent = message;
   el.id = `error-${fieldId}`;
-  field?.parentElement?.appendChild(el);
+  document.getElementById(fieldId)?.parentElement?.appendChild(el);
 }
 
-function clearError(fieldId) {
-  document.getElementById(`error-${fieldId}`)?.remove();
-}
+function clearError(fieldId) { document.getElementById(`error-${fieldId}`)?.remove(); }
 
 function clearAllErrors() {
   document.querySelectorAll('.validation-error, .validation-warning').forEach(el => el.remove());
 }
 
-function setSubmitting(isSubmitting) {
+function setSubmitting(is) {
   const btn = form.querySelector('button[type="submit"]');
-  btn.disabled = isSubmitting;
-  btn.textContent = isSubmitting ? 'Submitting…' : 'Submit for Review';
+  btn.disabled = is;
+  btn.textContent = is ? 'Submitting…' : 'Submit for Review';
 }
 
-// ─── Form Submit Handler ────────────────────────────────────────────────────────
+// ─── Submit ─────────────────────────────────────────────────────────────────
 
 form.addEventListener('submit', async event => {
   event.preventDefault();
   clearAllErrors();
 
-  const data = new FormData(form);
+  const data  = new FormData(form);
   let valid = true;
 
-  // Required text fields
-  const required = ['full_name','email','community_name','location','mission','values','local_vision','donation_transparency'];
+  const required = [
+    'full_name', 'email', 'community_name', 'location',
+    'submitter_reference',
+    'mission', 'values', 'local_vision', 'donation_transparency'
+  ];
   required.forEach(field => {
-    if (!data.get(field)?.trim()) {
-      showError(field, 'This field is required.');
-      valid = false;
-    }
+    if (!data.get(field)?.trim()) { showError(field, 'This field is required.'); valid = false; }
   });
 
-  // Required file fields
   const financialsFile = data.get('financials_csv');
   const budgetFile     = data.get('budget_csv');
   const donationFile   = data.get('donation_csv');
@@ -169,27 +157,24 @@ form.addEventListener('submit', async event => {
   setSubmitting(true);
 
   try {
-    // Parse CSVs
     const [financialsText, budgetText, donationText] = await Promise.all([
-      readFile(financialsFile),
-      readFile(budgetFile),
-      readFile(donationFile)
+      readFile(financialsFile), readFile(budgetFile), readFile(donationFile)
     ]);
 
     const financialRows = parseCSV(financialsText);
     const budgetRows    = parseCSV(budgetText);
     const donationRows  = parseCSV(donationText);
 
-    // Validate CSVs
-    const financialErrors = validateFinancials(financialRows);
-    const budgetErrors    = validateBudget(budgetRows);
-    const donationErrors  = validateDonations(donationRows);
+    const fErrs = validateFinancials(financialRows);
+    const bErrs = validateBudget(budgetRows);
+    const dErrs = validateDonations(donationRows);
 
-    if (financialErrors.length) { financialErrors.forEach(e => showError('financials_csv', e)); setSubmitting(false); return; }
-    if (budgetErrors.length)    { budgetErrors.forEach(e    => showError('budget_csv',     e)); setSubmitting(false); return; }
-    if (donationErrors.length)  { donationErrors.forEach(e  => showError('donation_csv',   e)); setSubmitting(false); return; }
+    if (fErrs.length) { fErrs.forEach(e => showError('financials_csv', e)); setSubmitting(false); return; }
+    if (bErrs.length) { bErrs.forEach(e => showError('budget_csv',     e)); setSubmitting(false); return; }
+    if (dErrs.length) { dErrs.forEach(e => showError('donation_csv',   e)); setSubmitting(false); return; }
 
-    // Insert core submission
+    const submitterRef = data.get('submitter_reference').trim();
+
     const { data: submission, error: submissionError } = await supabase
       .schema('ledger')
       .from('submissions')
@@ -198,6 +183,7 @@ form.addEventListener('submit', async event => {
         email:                    data.get('email').trim(),
         community_name:           data.get('community_name').trim(),
         location:                 data.get('location').trim(),
+        submitter_reference:      submitterRef,
         mission:                  data.get('mission').trim(),
         values:                   data.get('values').trim(),
         local_vision:             data.get('local_vision').trim(),
@@ -212,7 +198,7 @@ form.addEventListener('submit', async event => {
 
     const submissionId = submission.id;
 
-    // Verify the submission exists in the database before showing confirmation
+    // Verify record landed before declaring success
     const { data: verify, error: verifyError } = await supabase
       .schema('ledger')
       .from('submissions')
@@ -222,40 +208,31 @@ form.addEventListener('submit', async event => {
 
     if (verifyError || !verify) throw new Error('Submission could not be verified. Please try again.');
 
-    // Insert CSV rows in parallel
+    // Insert CSV child rows
     const financialInserts = financialRows.map((r, i) => ({
-      submission_id: submissionId,
-      section:       r.section,
-      name:          r.name,
-      amount:        Number(r.amount),
-      notes:         r.notes || null,
-      sort_order:    i
+      submission_id: submissionId, section: r.section, name: r.name,
+      amount: Number(r.amount), notes: r.notes || null, sort_order: i
     }));
 
     const budgetInserts = budgetRows.map((r, i) => ({
-      submission_id:  submissionId,
-      status:         r.status,
-      item:           r.item,
+      submission_id: submissionId, status: r.status, item: r.item,
       estimated_cost: r.estimated_cost ? Number(r.estimated_cost) : null,
       actual_cost:    r.actual_cost    ? Number(r.actual_cost)    : null,
-      notes:          r.notes || null,
-      sort_order:     i
+      notes: r.notes || null, sort_order: i
     }));
 
-    const validMethods = ['paypal', 'stripe', 'postal', 'pos', 'manual', 'cryptocurrency'];
-    const methodMap = { paypal: 'PayPal', stripe: 'Stripe', postal: 'Postal', pos: 'POS', manual: 'Manual', cryptocurrency: 'Cryptocurrency' };
-    // Only insert donation rows that have an active handle — skip template placeholders
+    const validMethods = ['paypal','stripe','postal','pos','manual','cryptocurrency'];
+    const methodMap = { paypal:'PayPal', stripe:'Stripe', postal:'Postal', pos:'POS', manual:'Manual', cryptocurrency:'Cryptocurrency' };
     const donationInserts = donationRows
       .filter(r => r.method && validMethods.includes(r.method.toLowerCase()) && r.handle_or_address?.trim())
       .map((r, i) => ({
-        submission_id:     submissionId,
-        method:            methodMap[r.method.toLowerCase()] || r.method,
+        submission_id: submissionId,
+        method: methodMap[r.method.toLowerCase()] || r.method,
         handle_or_address: r.handle_or_address,
-        notes:             r.notes || null,
-        sort_order:        i
+        notes: r.notes || null, sort_order: i
       }));
 
-    const [{ error: fErr }, { error: bErr }, { error: dErr }] = await Promise.all([
+    const [{ error: fe }, { error: be }, { error: de }] = await Promise.all([
       supabase.schema('ledger').from('submission_financials').insert(financialInserts),
       supabase.schema('ledger').from('submission_budget').insert(budgetInserts),
       donationInserts.length
@@ -263,13 +240,12 @@ form.addEventListener('submit', async event => {
         : Promise.resolve({ error: null })
     ]);
 
-    if (fErr) throw fErr;
-    if (bErr) throw bErr;
-    if (dErr) throw dErr;
+    if (fe) throw fe;
+    if (be) throw be;
+    if (de) throw de;
 
-    // Reset form and show confirmation modal
     form.reset();
-    openModal();
+    openModal(submitterRef);
 
   } catch (err) {
     console.error('[Intake] Submission error:', err);

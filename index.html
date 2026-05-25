@@ -5,13 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Community Ledger — Submit Your Community</title>
   <link rel="stylesheet" href="assets/css/style.css" />
-  <!-- Netlify Identity Widget -->
-  <!-- Required on the root page to handle invite_token and recovery_token URL fragments -->
-  <!-- MIGRATION: Remove this script tag when switching to Supabase Auth -->
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 
   <style>
-    /* ── Confirmation Modal ──────────────────────────────── */
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -70,6 +66,18 @@
       margin-bottom: 1.75rem;
       max-width: 38ch;
       margin-inline: auto;
+    }
+    .modal-ref {
+      display: inline-block;
+      margin-top: 0.25rem;
+      padding: 0.25rem 0.65rem;
+      background: oklch(from var(--color-primary, #01696f) l c h / 0.1);
+      border-radius: 0.375rem;
+      font-family: monospace;
+      font-size: 0.875rem;
+      color: var(--color-primary, #01696f);
+      font-weight: 600;
+      letter-spacing: 0.02em;
     }
     .modal-close {
       display: inline-flex;
@@ -146,6 +154,12 @@
           <label for="location">Location <span class="badge badge--required">Required</span></label>
           <input type="text" id="location" name="location" placeholder="City, State or Region" required />
         </div>
+
+        <div class="field-group">
+          <label for="submitter_reference">Submission Reference <span class="badge badge--required">Required</span></label>
+          <input type="text" id="submitter_reference" name="submitter_reference" placeholder="e.g. DAVIS-2026-001" required />
+          <span class="field-hint">A short identifier you choose — like a project code or name — that you can use to track and identify this submission. Keep a copy for your records. If you submit again using the same reference, an administrator will be notified to review the connection.</span>
+        </div>
       </section>
 
       <section class="form-section">
@@ -180,49 +194,44 @@
         <div class="notice notice--warning">
           Incomplete financials are one of the most common reasons submissions are not approved. Even estimates are acceptable — clarity and honesty matter more than perfection.
         </div>
-
         <div class="field-group">
           <label for="financials_csv">Financial Statements CSV <span class="badge badge--required">Required</span></label>
           <a href="docs/templates/financial-statements-template.csv" download class="template-link">⬇️ Download Template</a>
           <input type="file" id="financials_csv" name="financials_csv" accept=".csv" required />
-          <span class="field-hint">Must include at least one income row and one expense row. Use the <code>section</code> column to mark each row as <code>income</code> or <code>expense</code>. The <code>notes</code> column is optional but recommended for context.</span>
+          <span class="field-hint">Must include at least one income row and one expense row.</span>
         </div>
       </section>
 
       <section class="form-section">
         <h3>Budget</h3>
-        <p class="section-desc">Your budget shows your community how resources are being planned and managed. Purchased items show accountability. Expected items show planning. Desired items show ambition and invite support.</p>
+        <p class="section-desc">Your budget shows your community how resources are being planned and managed.</p>
         <div class="notice notice--tip">
-          Including desired items is optional, but communities that share their wish list often attract more targeted donations and in-kind contributions.
+          Including desired items is optional, but communities that share their wish list often attract more targeted donations.
         </div>
-
         <div class="field-group">
           <label for="budget_csv">Budget CSV <span class="badge badge--required">Required</span></label>
           <a href="docs/templates/budget-template.csv" download class="template-link">⬇️ Download Template</a>
           <input type="file" id="budget_csv" name="budget_csv" accept=".csv" required />
-          <span class="field-hint">Must include at least one purchased or expected item and a contingency row. Use <code>purchased</code>, <code>expected</code>, <code>desired</code>, or <code>contingency</code> in the <code>status</code> column.</span>
+          <span class="field-hint">Must include at least one purchased or expected item and a contingency row.</span>
         </div>
       </section>
 
       <section class="form-section">
         <h3>Donation &amp; Payment</h3>
-        <p class="section-desc">Let your community know how to support you financially. This information is displayed publicly on your Community Page. Include every method you actively accept — more options means more accessibility for your supporters.</p>
+        <p class="section-desc">Let your community know how to support you financially.</p>
         <div class="notice notice--warning">
-          Submissions without at least one active donation method cannot be approved. Including a transparency statement about how donations are used significantly increases donor confidence.
+          Submissions without at least one active donation method cannot be approved.
         </div>
-
         <div class="field-group">
           <label for="donation_csv">Donation &amp; Payment CSV <span class="badge badge--required">Required</span></label>
           <a href="docs/templates/donation-payment-template.csv" download class="template-link">⬇️ Download Template</a>
           <input type="file" id="donation_csv" name="donation_csv" accept=".csv" required />
-          <span class="field-hint">Must include at least one active method and its handle or address. Accepted methods: PayPal, Stripe, Postal, POS, Manual, Cryptocurrency. Leave handle/address blank for methods you include but do not actively use.</span>
+          <span class="field-hint">Must include at least one active method and its handle or address. Leave handle/address blank for methods you include but do not actively use.</span>
         </div>
-
         <div class="field-group">
           <label for="donation_transparency">Donation Transparency Statement <span class="badge badge--required">Required</span></label>
           <textarea id="donation_transparency" name="donation_transparency" rows="4" placeholder="How will donations be publicly reported?" required></textarea>
         </div>
-
         <div class="field-group">
           <label for="application_transparency">Application Transparency Statement <span class="badge badge--recommended">Recommended</span></label>
           <textarea id="application_transparency" name="application_transparency" rows="4" placeholder="How will the use of donated funds be tracked and reported?"></textarea>
@@ -248,7 +257,10 @@
         </svg>
       </div>
       <h2 id="modal-title">Submission received</h2>
-      <p id="modal-desc">Your submission has been placed in a review queue. You can expect a response within <strong>1 week</strong> at the email address you provided.</p>
+      <p id="modal-desc">
+        Your submission has been placed in a review queue. You can expect a response within <strong>1 week</strong> at the email address you provided.<br>
+        Your reference: <span class="modal-ref" id="modal-ref-display">—</span>
+      </p>
       <button class="modal-close" id="modal-close-btn">Got it</button>
     </div>
   </div>
@@ -259,11 +271,8 @@
     </div>
   </footer>
 
-  <!-- type="module" is required — intake.js uses ES module import syntax -->
   <script type="module" src="assets/js/intake.js"></script>
   <script>
-    // Handle Netlify Identity invite and recovery tokens on the root page.
-    // MIGRATION: Remove this block when switching to Supabase Auth.
     if (window.netlifyIdentity) {
       window.netlifyIdentity.on('init', user => {
         if (!user) window.netlifyIdentity.on('login', () => {
