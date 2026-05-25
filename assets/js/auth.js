@@ -104,12 +104,25 @@ const Auth = (() => {
 
   function isAdmin() {
     if (!_currentUser) return false;
+
     if (PROVIDER === 'netlify') {
-      // Netlify Identity: admin role set via Identity dashboard
-      return _currentUser?.app_metadata?.roles?.includes('admin') || false;
+      /**
+       * NETLIFY IDENTITY — INVITE-ONLY INSTANCE
+       *
+       * Because registration is set to "Invite only" in the Netlify Identity
+       * dashboard, any authenticated user is by definition an authorized admin.
+       * Role metadata is not required.
+       *
+       * MIGRATION NOTE: When switching to Supabase Auth, replace this with a
+       * proper role check against ledger.user_roles or a JWT custom claim:
+       *   return _currentUser?.user_metadata?.role === 'admin';
+       * At that point, invite-only enforcement moves to Supabase Auth settings
+       * and role assignment is managed in the ledger schema.
+       */
+      return true;
     }
+
     // MIGRATION: check Supabase custom claim or ledger.user_roles table
-    // Example: return _currentUser?.user_metadata?.role === 'admin';
     return false;
   }
 
