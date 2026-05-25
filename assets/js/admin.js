@@ -2,11 +2,10 @@
  * admin.js — Administration Page
  *
  * AUTH: Gated via auth.js (Netlify Identity). Invite-only instance — any
- * authenticated user is an authorized admin. See auth.js migration guide.
+ * authenticated user is an authorized admin.
  *
- * DATA: Uses the shared supabase.js client (same as intake.js) to ensure
- * consistent schema routing. Queries ledger.submissions_with_collision,
- * ledger.correction_reasons, and child tables.
+ * DATA: Uses the shared supabase.js client which defaults to the ledger
+ * schema. No .schema() chaining needed on individual queries.
  */
 
 import Auth from './auth.js';
@@ -47,7 +46,6 @@ async function loadAll() {
 // ─── Correction Reasons ──────────────────────────────────────────────────────
 async function loadReasons() {
   const { data, error } = await supabase
-    .schema('ledger')
     .from('correction_reasons')
     .select('*')
     .order('sort_order', { ascending: true });
@@ -57,7 +55,6 @@ async function loadReasons() {
 
 async function saveReason(reason) {
   const { error } = await supabase
-    .schema('ledger')
     .from('correction_reasons')
     .upsert(reason, { onConflict: 'id' });
   if (error) console.error('[admin] saveReason:', error);
@@ -66,7 +63,6 @@ async function saveReason(reason) {
 async function addReason(label, description) {
   const maxOrder = correctionReasons.reduce((m, r) => Math.max(m, r.sort_order || 0), 0);
   const { data, error } = await supabase
-    .schema('ledger')
     .from('correction_reasons')
     .insert({ label, description, active: true, sort_order: maxOrder + 1 })
     .select()
@@ -78,7 +74,6 @@ async function addReason(label, description) {
 // ─── Submissions ─────────────────────────────────────────────────────────────
 async function loadSubmissions() {
   const { data, error } = await supabase
-    .schema('ledger')
     .from('submissions_with_collision')
     .select('*')
     .in('status', ['pending'])
@@ -88,9 +83,9 @@ async function loadSubmissions() {
   const rows = data || [];
   await Promise.all(rows.map(async s => {
     const [{ data: financials }, { data: budget }, { data: donations }] = await Promise.all([
-      supabase.schema('ledger').from('submission_financials').select('*').eq('submission_id', s.id).order('sort_order'),
-      supabase.schema('ledger').from('submission_budget').select('*').eq('submission_id', s.id).order('sort_order'),
-      supabase.schema('ledger').from('submission_donations').select('*').eq('submission_id', s.id).order('sort_order'),
+      supabase.from('submission_financials').select('*').eq('submission_id', s.id).order('sort_order'),
+      supabase.from('submission_budget').select('*').eq('submission_id', s.id).order('sort_order'),
+      supabase.from('submission_donations').select('*').eq('submission_id', s.id).order('sort_order'),
     ]);
     s.financials = financials || [];
     s.budget     = budget     || [];
@@ -102,7 +97,6 @@ async function loadSubmissions() {
 
 async function approveSubmission(id) {
   const { error } = await supabase
-    .schema('ledger')
     .from('submissions')
     .update({ status: 'approved', reviewed_at: new Date().toISOString() })
     .eq('id', id);
@@ -114,7 +108,6 @@ async function approveSubmission(id) {
 
 async function rejectSubmission(id, reasonIds, notes) {
   const { error } = await supabase
-    .schema('ledger')
     .from('submissions')
     .update({
       status: 'rejected',
@@ -131,7 +124,6 @@ async function rejectSubmission(id, reasonIds, notes) {
 
 async function linkSubmissions(sourceId, targetRef) {
   const { error } = await supabase
-    .schema('ledger')
     .from('submissions')
     .update({ linked_reference: targetRef })
     .eq('id', sourceId);

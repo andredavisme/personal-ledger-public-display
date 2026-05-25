@@ -1,14 +1,9 @@
 /**
  * supabase.js — Supabase Client
  *
- * Initializes the Supabase client using environment variables injected
- * by Netlify at build time via netlify.toml [build.environment] or
- * the Netlify dashboard environment variable settings.
- *
- * MIGRATION NOTE:
- * If moving away from Netlify, set SUPABASE_URL and SUPABASE_ANON_KEY
- * in your host's environment variable manager. The client code here
- * does not change — only where the values are stored.
+ * Initializes the Supabase client with the ledger schema as default.
+ * This ensures all queries route to ledger.* without needing .schema()
+ * chaining on every call.
  *
  * These are publishable/anon keys — safe for client-side use.
  * Never use the service_role key in browser code.
@@ -23,6 +18,8 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('[Supabase] SUPABASE_URL or SUPABASE_ANON_KEY is not set.');
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  db: { schema: 'ledger' }
+});
 
 export default supabase;
