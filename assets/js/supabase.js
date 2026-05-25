@@ -1,9 +1,8 @@
 /**
  * supabase.js — Supabase Client
  *
- * Initializes the Supabase client with the ledger schema as default.
- * This ensures all queries route to ledger.* without needing .schema()
- * chaining on every call.
+ * All tables are in the public schema (PostgREST default).
+ * No db.schema override needed.
  *
  * These are publishable/anon keys — safe for client-side use.
  * Never use the service_role key in browser code.
@@ -18,8 +17,6 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('[Supabase] SUPABASE_URL or SUPABASE_ANON_KEY is not set.');
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  db: { schema: 'ledger' }
-});
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export default supabase;
