@@ -36,9 +36,11 @@ Internal page for reviewing and actioning pending submissions.
 - Allow the administrator to review full submission details
 - Approve a submission → triggers Community Page creation
 - Reject a submission → archives the entry and triggers a rejection email to the User
-- When rejecting, the administrator must provide:
-  - Which fields were missing or insufficient
-  - Why each missing item is important to the submission
+- When rejecting, the administrator:
+  - Selects applicable **correction reasons** from a managed checklist
+  - May add a free-text note for additional context
+  - Must select at least one checkbox before rejection can be submitted
+- Includes a **Correction Reasons Manager** section to add, edit, or deactivate checklist items
 - Access is restricted to authorized administrators only
 
 **Key Principle:** Approval is the sole trigger for Community Page production. Rejection is the sole trigger for a rejection notification email.
@@ -65,8 +67,9 @@ A dedicated public page generated per approved submission.
 When an administrator rejects a submission, an automated email is sent to the User's submitted email address.
 
 **Email must include:**
-- Which fields were missing or incomplete
-- Why each missing field is important to the submission and community page
+- The selected correction reasons (from the managed checklist)
+- Any additional free-text notes from the administrator
+- Why each item matters to the submission and community page
 - An invitation to resubmit with the corrected information
 
 **Purpose:** Ensure the User understands exactly what is needed, reducing incomplete resubmissions and maintaining submission quality.
@@ -79,10 +82,14 @@ When an administrator rejects a submission, an automated email is sent to the Us
 User → Intake Page (/submit)
          ↓ [submission stored as pending, email captured]
 Administrator → Admin Page (/admin)
-         ↓ [approve or reject + rejection notes]
+         ↓ [approve or reject]
+         ↓ [if reject: select correction reasons (checkboxes) + optional notes]
 Approved → Community Page (/community/:id) [published]
 Rejected → Archived + Rejection Email → User
-             (missing fields + why they matter + resubmit invite)
+             (selected reasons + notes + resubmit invite)
+
+Administrator → Admin Page → Correction Reasons Manager
+         ↓ [add / edit / deactivate checklist items]
 ```
 
 ---
