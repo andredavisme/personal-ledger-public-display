@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Community Ledger — Submit Your Community</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1>Community Ledger</h1>
+      <nav>
+        <a href="index.html" class="active">Submit</a>
+        <a href="community.html">Community Pages</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="page-intro">
+      <h2>Submit Your Community</h2>
+      <div class="notice notice--info">
+        <strong>Before you begin:</strong>
+        <ul>
+          <li><span class="badge badge--required">Required</span> Fields must be completed for your submission to be reviewed.</li>
+          <li><span class="badge badge--recommended">Recommended</span> Not required, but directly strengthens your Community Page and improves approval.</li>
+          <li><span class="badge badge--optional">Optional</span> Adds depth and value — include what you can.</li>
+        </ul>
+        <p>All approved information will be displayed publicly on your Community Page. Please ensure accuracy.</p>
+      </div>
+    </section>
+
+    <form id="intake-form" novalidate>
+
+      <!-- SECTION 1: Identity & Contact -->
+      <section class="form-section">
+        <h3>Identity &amp; Contact</h3>
+        <p class="section-desc">Tell us who you are and how to reach you. This information identifies your Community Page and is how we contact you if your submission needs updates.</p>
+
+        <div class="field-group">
+          <label for="full_name">Full Name <span class="badge badge--required">Required</span></label>
+          <input type="text" id="full_name" name="full_name" placeholder="Your full name" required />
+        </div>
+
+        <div class="field-group">
+          <label for="email">Email Address <span class="badge badge--required">Required</span></label>
+          <input type="email" id="email" name="email" placeholder="your@email.com" required />
+          <span class="field-hint">Used for submission confirmation and rejection notifications only.</span>
+        </div>
+
+        <div class="field-group">
+          <label for="community_name">Community / Organization Name <span class="badge badge--required">Required</span></label>
+          <input type="text" id="community_name" name="community_name" placeholder="Your community or organization name" required />
+          <span class="field-hint">Displayed as the title of your Community Page.</span>
+        </div>
+
+        <div class="field-group">
+          <label for="location">Location <span class="badge badge--required">Required</span></label>
+          <input type="text" id="location" name="location" placeholder="City, State or Region" required />
+        </div>
+      </section>
+
+      <!-- SECTION 2: Community Objectives -->
+      <section class="form-section">
+        <h3>Community Objectives</h3>
+        <p class="section-desc">Help the community understand who you are and what you stand for. These statements form the heart of your Community Page — the more thoughtful and complete, the stronger your page will be.</p>
+
+        <div class="field-group">
+          <label for="mission">Mission Statement <span class="badge badge--required">Required</span></label>
+          <textarea id="mission" name="mission" rows="4" placeholder="Describe what your community does and who it serves." required></textarea>
+        </div>
+
+        <div class="field-group">
+          <label for="values">Core Values <span class="badge badge--required">Required</span></label>
+          <textarea id="values" name="values" rows="4" placeholder="What principles guide your community’s existence?" required></textarea>
+        </div>
+
+        <div class="field-group">
+          <label for="local_vision">Local Vision <span class="badge badge--required">Required</span></label>
+          <textarea id="local_vision" name="local_vision" rows="4" placeholder="What do you aim to achieve in your local area?" required></textarea>
+        </div>
+
+        <div class="field-group">
+          <label for="universal_vision">Universal Vision <span class="badge badge--recommended">Recommended</span></label>
+          <textarea id="universal_vision" name="universal_vision" rows="4" placeholder="What broader or global impact does your community aspire to?"></textarea>
+          <span class="field-hint">A strong universal vision adds credibility and inspires wider support.</span>
+        </div>
+      </section>
+
+      <!-- SECTION 3: Financial Statements -->
+      <section class="form-section">
+        <h3>Financial Statements</h3>
+        <p class="section-desc">Financial transparency is central to this platform. Upload your financial statements using our CSV template so your Community Page can display a clear picture of your income and expenses.</p>
+        <div class="notice notice--warning">
+          Incomplete financials are one of the most common reasons submissions are not approved. Even estimates are acceptable — clarity and honesty matter more than perfection.
+        </div>
+
+        <div class="field-group">
+          <label for="financials_csv">Financial Statements CSV <span class="badge badge--required">Required</span></label>
+          <a href="docs/templates/financial-statements-template.csv" download class="template-link">⬇️ Download Template</a>
+          <input type="file" id="financials_csv" name="financials_csv" accept=".csv" required />
+          <span class="field-hint">Must include at least one income row and one expense row. Use the <code>section</code> column to mark each row as <code>income</code> or <code>expense</code>. The <code>notes</code> column is optional but recommended for context.</span>
+        </div>
+      </section>
+
+      <!-- SECTION 4: Budget -->
+      <section class="form-section">
+        <h3>Budget</h3>
+        <p class="section-desc">Your budget shows your community how resources are being planned and managed. Purchased items show accountability. Expected items show planning. Desired items show ambition and invite support.</p>
+        <div class="notice notice--tip">
+          Including desired items is optional, but communities that share their wish list often attract more targeted donations and in-kind contributions.
+        </div>
+
+        <div class="field-group">
+          <label for="budget_csv">Budget CSV <span class="badge badge--required">Required</span></label>
+          <a href="docs/templates/budget-template.csv" download class="template-link">⬇️ Download Template</a>
+          <input type="file" id="budget_csv" name="budget_csv" accept=".csv" required />
+          <span class="field-hint">Must include at least one purchased or expected item and a contingency row. Use <code>purchased</code>, <code>expected</code>, <code>desired</code>, or <code>contingency</code> in the <code>status</code> column.</span>
+        </div>
+      </section>
+
+      <!-- SECTION 5: Donation & Payment -->
+      <section class="form-section">
+        <h3>Donation &amp; Payment</h3>
+        <p class="section-desc">Let your community know how to support you financially. This information is displayed publicly on your Community Page. Include every method you actively accept — more options means more accessibility for your supporters.</p>
+        <div class="notice notice--warning">
+          Submissions without at least one active donation method cannot be approved. Including a transparency statement about how donations are used significantly increases donor confidence.
+        </div>
+
+        <div class="field-group">
+          <label for="donation_csv">Donation &amp; Payment CSV <span class="badge badge--required">Required</span></label>
+          <a href="docs/templates/donation-payment-template.csv" download class="template-link">⬇️ Download Template</a>
+          <input type="file" id="donation_csv" name="donation_csv" accept=".csv" required />
+          <span class="field-hint">Must include at least one active method and its handle or address. Accepted methods: PayPal, Stripe, Postal, POS, Manual, Cryptocurrency.</span>
+        </div>
+
+        <div class="field-group">
+          <label for="donation_transparency">Donation Transparency Statement <span class="badge badge--required">Required</span></label>
+          <textarea id="donation_transparency" name="donation_transparency" rows="4" placeholder="How will donations be publicly reported?" required></textarea>
+        </div>
+
+        <div class="field-group">
+          <label for="application_transparency">Application Transparency Statement <span class="badge badge--recommended">Recommended</span></label>
+          <textarea id="application_transparency" name="application_transparency" rows="4" placeholder="How will the use of donated funds be tracked and reported?"></textarea>
+          <span class="field-hint">Strong transparency statements build long-term donor trust.</span>
+        </div>
+      </section>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary">Submit for Review</button>
+        <p class="form-note">Your submission will be reviewed by an administrator before your Community Page is published.</p>
+      </div>
+
+    </form>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; 2026 Community Ledger. All submissions reviewed before publication.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/intake.js"></script>
+</body>
+</html>

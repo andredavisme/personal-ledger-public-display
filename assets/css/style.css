@@ -1,0 +1,168 @@
+/* === Reset & Base === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #f5f7fa;
+  color: #1a1a2e;
+  line-height: 1.6;
+}
+
+a { color: #4361ee; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* === Header === */
+.site-header {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 1rem 0;
+}
+.site-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.site-header h1 { font-size: 1.3rem; font-weight: 700; color: #fff; }
+.site-header nav a {
+  color: #a0aec0;
+  margin-left: 1.5rem;
+  font-size: 0.9rem;
+}
+.site-header nav a.active,
+.site-header nav a:hover { color: #fff; text-decoration: none; }
+
+/* === Main === */
+main { padding: 2.5rem 0 4rem; }
+
+.page-intro h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: #1a1a2e;
+}
+
+/* === Notices === */
+.notice {
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.92rem;
+}
+.notice ul { margin: 0.5rem 0 0.75rem 1.25rem; }
+.notice p { margin-top: 0.5rem; }
+.notice--info { background: #ebf4ff; border-left: 4px solid #4361ee; }
+.notice--warning { background: #fff8e1; border-left: 4px solid #f59e0b; }
+.notice--tip { background: #f0fdf4; border-left: 4px solid #22c55e; }
+
+/* === Badges === */
+.badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  margin-left: 0.35rem;
+}
+.badge--required { background: #fee2e2; color: #b91c1c; }
+.badge--recommended { background: #fef3c7; color: #92400e; }
+.badge--optional { background: #e0e7ff; color: #3730a3; }
+
+/* === Form Sections === */
+.form-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-top: 2rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+.form-section h3 {
+  font-size: 1.2rem;
+  margin-bottom: 0.4rem;
+  color: #1a1a2e;
+}
+.section-desc {
+  color: #64748b;
+  font-size: 0.93rem;
+  margin-bottom: 1.25rem;
+}
+
+/* === Fields === */
+.field-group { margin-bottom: 1.5rem; }
+.field-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  font-size: 0.95rem;
+}
+.field-group input[type="text"],
+.field-group input[type="email"],
+.field-group textarea {
+  width: 100%;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: #f8fafc;
+  transition: border-color 0.2s;
+}
+.field-group input:focus,
+.field-group textarea:focus {
+  outline: none;
+  border-color: #4361ee;
+  background: #fff;
+}
+.field-group input[type="file"] {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+}
+.field-hint {
+  display: block;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin-top: 0.35rem;
+}
+.template-link {
+  display: inline-block;
+  font-size: 0.82rem;
+  margin-bottom: 0.4rem;
+  color: #4361ee;
+}
+
+/* === Actions === */
+.form-actions { margin-top: 2.5rem; text-align: center; }
+.btn {
+  display: inline-block;
+  padding: 0.8rem 2.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s;
+}
+.btn--primary { background: #4361ee; color: #fff; }
+.btn--primary:hover { background: #3451d1; }
+.form-note {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+/* === Footer === */
+.site-footer {
+  background: #1a1a2e;
+  color: #64748b;
+  text-align: center;
+  padding: 1.25rem 0;
+  font-size: 0.85rem;
+}
