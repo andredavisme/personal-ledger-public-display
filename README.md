@@ -18,6 +18,7 @@ Accepts information submissions from the public User.
 **Responsibilities:**
 - Present a structured intake form to the User
 - Collect all fields necessary to generate a complete Community Page (no follow-up data collection needed)
+- Collect the User's **email address** for notification purposes
 - Submit the entry to the database with a `pending` status
 - Confirm receipt to the User upon submission
 
@@ -34,10 +35,13 @@ Internal page for reviewing and actioning pending submissions.
 - Display all submissions in `pending` status
 - Allow the administrator to review full submission details
 - Approve a submission → triggers Community Page creation
-- Reject a submission → archives or flags the entry
+- Reject a submission → archives the entry and triggers a rejection email to the User
+- When rejecting, the administrator must provide:
+  - Which fields were missing or insufficient
+  - Why each missing item is important to the submission
 - Access is restricted to authorized administrators only
 
-**Key Principle:** Approval is the sole trigger for Community Page production — no page is created without explicit administrator action.
+**Key Principle:** Approval is the sole trigger for Community Page production. Rejection is the sole trigger for a rejection notification email.
 
 ---
 
@@ -56,15 +60,29 @@ A dedicated public page generated per approved submission.
 
 ---
 
+## Rejection Email
+
+When an administrator rejects a submission, an automated email is sent to the User's submitted email address.
+
+**Email must include:**
+- Which fields were missing or incomplete
+- Why each missing field is important to the submission and community page
+- An invitation to resubmit with the corrected information
+
+**Purpose:** Ensure the User understands exactly what is needed, reducing incomplete resubmissions and maintaining submission quality.
+
+---
+
 ## Page Flow
 
 ```
 User → Intake Page (/submit)
-         ↓ [submission stored as pending]
+         ↓ [submission stored as pending, email captured]
 Administrator → Admin Page (/admin)
-         ↓ [approve or reject]
+         ↓ [approve or reject + rejection notes]
 Approved → Community Page (/community/:id) [published]
-Rejected → Archived / Flagged
+Rejected → Archived + Rejection Email → User
+             (missing fields + why they matter + resubmit invite)
 ```
 
 ---
