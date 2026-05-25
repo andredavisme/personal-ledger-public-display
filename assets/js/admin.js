@@ -15,7 +15,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // ─── Supabase Client ──────────────────────────────────────────────────────────
 const SUPABASE_URL  = 'https://hhyhulqngdkwsxhymmcd.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoeWh1bHFuZ2Rrd3N4aHltbWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxOTMwMDEsImV4cCI6MjA2Mzc2OTAwMX0.abc123placeholder';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoeWh1bHFuZ2Rrd3N4aHltbWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMzEyMDEsImV4cCI6MjA5MjcwNzIwMX0.dmSy7Q8Je5lEY4XCFzwvfPnkBYLebPE0yZMhy6Y8czI';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ─── Auth Gate ────────────────────────────────────────────────────────────────
