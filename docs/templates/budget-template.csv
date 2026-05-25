@@ -1,0 +1,5 @@
+status,item,estimated_cost,actual_cost,notes
+purchased,Example Purchased Item,0.00,0.00,Item already acquired
+expected,Example Expected Purchase,0.00,,Planned acquisition
+desired,Example Desired Item,0.00,,Would add value if funded
+contingency,Unexpected Reserve,0.00,,Buffer for unplanned costs

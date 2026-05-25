@@ -1,0 +1,5 @@
+method,handle_or_address,notes
+PayPal,your@email.com,
+Stripe,https://donate.stripe.com/your-link,
+Postal,Your Mailing Address,Checks payable to [Community Name]
+Cryptocurrency,Your wallet address,Specify coin type in notes
