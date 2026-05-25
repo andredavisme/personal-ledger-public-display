@@ -24,6 +24,7 @@ This is not a toy or an exercise. It is a real application, and the one you buil
 
 | File | Topic |
 |------|-------|
+| [00-what-this-does.md](00-what-this-does.md) | Plain-language overview of the full project — the collect → store → show flow, the three money buckets, and how the public page works |
 | [01-introduction.md](01-introduction.md) | What we are building, why it matters, and what AI is (and is not) in this process |
 | [02-your-tools.md](02-your-tools.md) | Setting up GitHub, Netlify, and Supabase accounts |
 | [03-your-first-file.md](03-your-first-file.md) | Creating your first HTML file and understanding what a web page actually is |
