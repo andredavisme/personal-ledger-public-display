@@ -1,123 +1,147 @@
 /**
  * admin.js — Administration Page
  *
- * AUTH: Gated via auth.js (Netlify Identity). The entire admin UI is hidden
- * until Auth.isAdmin() returns true. See auth.js for migration guide.
+ * AUTH: Gated via auth.js (Netlify Identity). Invite-only instance — any
+ * authenticated user is an authorized admin. See auth.js migration guide.
  *
- * CSV PREVIEW: Submission records include parsed CSV data stored as structured
- * arrays. The renderCSVTable() function renders these programmatically as
- * HTML tables — no file access or download required by the administrator.
- *
- * NEXT STEP: Replace placeholder data arrays with Supabase API calls to:
- *   - ledger.submissions (pending submissions + parsed CSV data)
- *   - ledger.correction_reasons (managed checklist)
- *   - ledger.admin_actions (audit log)
- * Rejection email triggered via Supabase Edge Function.
+ * DATA: All submission data is loaded from Supabase via the
+ * ledger.submissions_with_collision view, which surfaces reference_collision
+ * flags for the admin. Correction reasons are persisted to
+ * ledger.correction_reasons. Approve/reject write to ledger.submissions.
  */
 
 import Auth from './auth.js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// ─── Auth Gate ───────────────────────────────────────────────────────────────
-const authGate = document.getElementById('auth-gate');
-const adminUI = document.getElementById('admin-ui');
-const loginBtn = document.getElementById('login-btn');
+// ─── Supabase Client ──────────────────────────────────────────────────────────
+const SUPABASE_URL  = 'https://lkugkbgqidojxfhldvzb.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxrdWdrYmdxaWRvanhmaGxkdnpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxMTI4NTUsImV4cCI6MjA2MzY4ODg1NX0.oFqLqWQ1LO5CjB0X3FKkBvdQnIHJi2WfEKiAj1V_vNA';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ─── Auth Gate ────────────────────────────────────────────────────────────────
+const authGate  = document.getElementById('auth-gate');
+const adminUI   = document.getElementById('admin-ui');
+const loginBtn  = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 
 Auth.onChange(user => {
   if (Auth.isAdmin()) {
     authGate.style.display = 'none';
-    adminUI.style.display = 'block';
+    adminUI.style.display  = 'block';
+    loadAll();
   } else {
     authGate.style.display = 'flex';
-    adminUI.style.display = 'none';
+    adminUI.style.display  = 'none';
   }
 });
 
-loginBtn.addEventListener('click', () => Auth.login());
+loginBtn.addEventListener('click',  () => Auth.login());
 logoutBtn.addEventListener('click', () => Auth.logout());
-
 Auth.initAuth();
 
-// ─── Placeholder Data ─────────────────────────────────────────────────────────
-// TODO: Replace with Supabase query: SELECT * FROM ledger.submissions WHERE status = 'pending'
+// ─── State ────────────────────────────────────────────────────────────────────
+let correctionReasons = [];  // loaded from ledger.correction_reasons
+let submissions       = [];  // loaded from ledger.submissions_with_collision
 
-const correctionReasons = [
-  { id: crypto.randomUUID(), label: 'Missing contact information', description: 'A valid email or phone number is required so we can contact you if your submission needs updates.', active: true, sortOrder: 1 },
-  { id: crypto.randomUUID(), label: 'Incomplete financial details', description: 'Financial statements must clearly show income and expenses so the community page can reflect your financial picture accurately.', active: true, sortOrder: 2 },
-  { id: crypto.randomUUID(), label: 'Missing donation preference', description: 'At least one active donation method is required so supporters know how to contribute.', active: true, sortOrder: 3 },
-  { id: crypto.randomUUID(), label: 'Unclear community objectives', description: 'Mission, values, and vision statements are required so the community understands your purpose and goals.', active: true, sortOrder: 4 }
-];
+// ─── Load All Data ────────────────────────────────────────────────────────────
+async function loadAll() {
+  await Promise.all([loadReasons(), loadSubmissions()]);
+  renderReasonsManager();
+  renderPendingSubmissions();
+}
 
-const pendingSubmissions = [
-  {
-    id: 'sub_001',
-    communityName: 'East Bayside Mutual Aid',
-    submitter: 'Jordan Lee',
-    email: 'jordan@example.com',
-    location: 'Portland, Maine',
-    status: 'pending',
-    submittedAt: '2026-05-24 09:14',
-    mission: 'Support neighbors with emergency supplies and mutual aid coordination.',
-    values: 'Dignity, mutual support, transparency, accountability.',
-    localVision: 'Build a reliable neighborhood support network.',
-    universalVision: 'Share a model for community-led resilience in other places.',
-    donationTransparency: 'All donations will be reported monthly on our community page.',
-    applicationTransparency: 'Fund usage will be itemized quarterly.',
-    // Parsed CSV data — stored as structured arrays after intake validation
-    // TODO: In production these come from ledger.submission_financials,
-    //       ledger.submission_budget, ledger.submission_donations
-    financials: [
-      { section: 'income', name: 'Local Arts Council Grant', amount: '1500.00', notes: 'Annual' },
-      { section: 'income', name: 'Spring Fundraiser', amount: '320.00', notes: '' },
-      { section: 'expense', name: 'Venue Rental', amount: '200.00', notes: 'Monthly' },
-      { section: 'expense', name: 'Supplies', amount: '85.50', notes: '' }
-    ],
-    budget: [
-      { status: 'purchased', item: 'Folding Tables x6', estimated_cost: '180.00', actual_cost: '175.00', notes: '' },
-      { status: 'expected', item: 'Sound System Rental', estimated_cost: '250.00', actual_cost: '', notes: 'Q3 event' },
-      { status: 'desired', item: 'Projector', estimated_cost: '400.00', actual_cost: '', notes: 'Nice to have' },
-      { status: 'contingency', item: 'Unexpected Reserve', estimated_cost: '300.00', actual_cost: '', notes: '' }
-    ],
-    donations: [
-      { method: 'PayPal', handle_or_address: 'eastbayside@example.com', notes: '' },
-      { method: 'Postal', handle_or_address: '42 Bay St, Portland ME 04101', notes: 'Checks payable to East Bayside Mutual Aid' }
-    ]
-  },
-  {
-    id: 'sub_002',
-    communityName: 'Creative Commons Garden Circle',
-    submitter: 'Morgan Ellis',
-    email: 'morgan@example.com',
-    location: 'Westbrook, Maine',
-    status: 'pending',
-    submittedAt: '2026-05-24 14:32',
-    mission: 'Create shared food-growing spaces and learning events.',
-    values: 'Access, stewardship, education, reciprocity.',
-    localVision: 'Expand neighborhood gardens and volunteer participation.',
-    universalVision: '',
-    donationTransparency: 'Donations reported on our website after each season.',
-    applicationTransparency: '',
-    financials: [
-      { section: 'income', name: 'Member Dues', amount: '600.00', notes: 'Annual' },
-      { section: 'expense', name: 'Seeds & Soil', amount: '210.00', notes: 'Spring order' }
-    ],
-    budget: [
-      { status: 'purchased', item: 'Garden Tools Set', estimated_cost: '95.00', actual_cost: '88.00', notes: '' },
-      { status: 'expected', item: 'Irrigation Line', estimated_cost: '150.00', actual_cost: '', notes: '' },
-      { status: 'contingency', item: 'Unexpected Reserve', estimated_cost: '100.00', actual_cost: '', notes: '' }
-    ],
-    donations: [
-      { method: 'Stripe', handle_or_address: 'https://donate.stripe.com/garden-circle', notes: '' }
-    ]
-  }
-];
+// ─── Correction Reasons (Supabase-backed) ─────────────────────────────────────
+async function loadReasons() {
+  const { data, error } = await supabase
+    .schema('ledger')
+    .from('correction_reasons')
+    .select('*')
+    .order('sort_order', { ascending: true });
+  if (error) { console.error('[admin] loadReasons:', error); return; }
+  correctionReasons = data || [];
+}
+
+async function saveReason(reason) {
+  const { error } = await supabase
+    .schema('ledger')
+    .from('correction_reasons')
+    .upsert(reason, { onConflict: 'id' });
+  if (error) console.error('[admin] saveReason:', error);
+}
+
+async function addReason(label, description) {
+  const maxOrder = correctionReasons.reduce((m, r) => Math.max(m, r.sort_order || 0), 0);
+  const { data, error } = await supabase
+    .schema('ledger')
+    .from('correction_reasons')
+    .insert({ label, description, active: true, sort_order: maxOrder + 1 })
+    .select()
+    .single();
+  if (error) { console.error('[admin] addReason:', error); return; }
+  correctionReasons.push(data);
+}
+
+// ─── Submissions (Supabase-backed) ────────────────────────────────────────────
+async function loadSubmissions() {
+  // ledger.submissions_with_collision adds reference_collision boolean
+  const { data, error } = await supabase
+    .schema('ledger')
+    .from('submissions_with_collision')
+    .select('*')
+    .in('status', ['pending', 'flagged'])
+    .order('created_at', { ascending: true });
+  if (error) { console.error('[admin] loadSubmissions:', error); return; }
+  submissions = data || [];
+}
+
+async function approveSubmission(id) {
+  const { error } = await supabase
+    .schema('ledger')
+    .from('submissions')
+    .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) { showToast('Approval failed: ' + error.message, 'error'); return; }
+  showToast('Submission approved and queued for publication.', 'success');
+  await loadSubmissions();
+  renderPendingSubmissions();
+}
+
+async function rejectSubmission(id, reasonIds, notes) {
+  const { error } = await supabase
+    .schema('ledger')
+    .from('submissions')
+    .update({
+      status: 'rejected',
+      rejection_reason_ids: reasonIds,
+      rejection_notes: notes || null,
+      reviewed_at: new Date().toISOString()
+    })
+    .eq('id', id);
+  if (error) { showToast('Rejection failed: ' + error.message, 'error'); return; }
+  showToast('Submission rejected. Notification queued.', 'success');
+  await loadSubmissions();
+  renderPendingSubmissions();
+}
+
+async function linkSubmissions(sourceId, targetRef) {
+  // Tag source submission as linked to target reference
+  const { error } = await supabase
+    .schema('ledger')
+    .from('submissions')
+    .update({ linked_reference: targetRef })
+    .eq('id', sourceId);
+  if (error) { showToast('Link failed: ' + error.message, 'error'); return; }
+  showToast('Submissions linked successfully.', 'success');
+  await loadSubmissions();
+  renderPendingSubmissions();
+}
 
 // ─── CSV Table Renderer ────────────────────────────────────────────────────────
 function renderCSVTable(rows) {
   if (!rows || rows.length === 0) return '<p class="field-hint">No data provided.</p>';
   const headers = Object.keys(rows[0]);
   const headerRow = headers.map(h => `<th>${h.replace(/_/g, ' ')}</th>`).join('');
-  const dataRows = rows.map(row =>
+  const dataRows  = rows.map(row =>
     `<tr>${headers.map(h => `<td>${row[h] || '<span class="empty">—</span>'}</td>`).join('')}</tr>`
   ).join('');
   return `
@@ -129,46 +153,119 @@ function renderCSVTable(rows) {
     </div>`;
 }
 
-// ─── Submission Renderer ───────────────────────────────────────────────────────
+// ─── Collision Alert Banner ───────────────────────────────────────────────────
+function buildCollisionBanner(s) {
+  if (!s.reference_collision) return '';
+  // Find all other submissions sharing this reference
+  const siblings = submissions
+    .filter(x => x.submitter_reference === s.submitter_reference && x.id !== s.id)
+    .map(x => `<strong>${x.community_name || x.id}</strong>`)
+    .join(', ');
+  return `
+    <div class="notice notice--warning collision-banner">
+      <strong>⚠ Duplicate Reference Detected</strong>
+      <p>Reference <code>${escHtml(s.submitter_reference)}</code> also appears on: ${siblings || 'another submission'}.
+      Use the <em>Link Records</em> panel below to associate these submissions, or treat as separate.</p>
+    </div>`;
+}
+
+// ─── Link Records Panel ───────────────────────────────────────────────────────
+function buildLinkPanel(s) {
+  const otherRefs = [...new Set(
+    submissions
+      .filter(x => x.id !== s.id)
+      .map(x => x.submitter_reference)
+      .filter(Boolean)
+  )];
+  const options = otherRefs.map(r =>
+    `<option value="${escHtml(r)}">${escHtml(r)}</option>`
+  ).join('');
+  const currentLink = s.linked_reference
+    ? `<p class="field-hint">Currently linked to: <code>${escHtml(s.linked_reference)}</code></p>`
+    : '';
+  return `
+    <details class="link-records-panel">
+      <summary><strong>Link Records</strong> <span class="field-hint">Admin discretion</span></summary>
+      ${currentLink}
+      <p class="field-hint">Associate this submission with another by choosing its reference ID. This is logged for audit purposes only — it does not merge or auto-approve either record.</p>
+      <div class="link-records-controls">
+        <select id="link-target-${s.id}" class="link-select">
+          <option value="">— Select a reference to link —</option>
+          ${options}
+        </select>
+        <button type="button" class="btn btn--small btn--secondary" data-link="${s.id}">Save Link</button>
+      </div>
+    </details>`;
+}
+
+// ─── Submission Renderer ──────────────────────────────────────────────────────
 const submissionsContainer = document.getElementById('pending-submissions');
 
 function renderPendingSubmissions() {
   submissionsContainer.innerHTML = '';
-  pendingSubmissions.forEach(s => {
+
+  if (submissions.length === 0) {
+    submissionsContainer.innerHTML = `
+      <div class="empty-state">
+        <p>No pending submissions at this time.</p>
+      </div>`;
+    return;
+  }
+
+  submissions.forEach(s => {
+    const financials = s.financials || [];
+    const budget     = s.budget     || [];
+    const donations  = s.donations  || [];
+
     const card = document.createElement('article');
-    card.className = 'submission-card';
+    card.className = 'submission-card' + (s.reference_collision ? ' submission-card--collision' : '');
+    card.dataset.submissionId = s.id;
+
     card.innerHTML = `
       <div class="submission-card__header">
         <div>
-          <h4>${s.communityName}</h4>
-          <p>${s.submitter} &middot; ${s.email} &middot; ${s.location} &middot; Submitted: ${s.submittedAt}</p>
+          <h4>${escHtml(s.community_name || '—')}</h4>
+          <p>
+            ${escHtml(s.submitter_name || '—')} &middot;
+            ${escHtml(s.email || '—')} &middot;
+            ${escHtml(s.location || '—')} &middot;
+            Submitted: ${formatDate(s.created_at)}
+          </p>
+          <p class="submission-ref">
+            Reference ID: <code>${escHtml(s.submitter_reference || '—')}</code>
+            ${s.reference_collision ? '<span class="badge badge--collision">⚠ Collision</span>' : ''}
+          </p>
         </div>
-        <span class="badge badge--required">${s.status}</span>
+        <span class="badge badge--required">${escHtml(s.status)}</span>
       </div>
 
+      ${buildCollisionBanner(s)}
+
       <div class="submission-card__body">
-        <p><strong>Mission:</strong> ${s.mission}</p>
-        <p><strong>Values:</strong> ${s.values}</p>
-        <p><strong>Local Vision:</strong> ${s.localVision}</p>
-        <p><strong>Universal Vision:</strong> ${s.universalVision || '<em>Not provided</em>'}</p>
-        <p><strong>Donation Transparency:</strong> ${s.donationTransparency}</p>
-        <p><strong>Application Transparency:</strong> ${s.applicationTransparency || '<em>Not provided</em>'}</p>
+        <p><strong>Mission:</strong> ${escHtml(s.mission || '')}
+        <p><strong>Values:</strong> ${escHtml(s.values || '')}
+        <p><strong>Local Vision:</strong> ${escHtml(s.local_vision || '')}
+        <p><strong>Universal Vision:</strong> ${s.universal_vision ? escHtml(s.universal_vision) : '<em>Not provided</em>'}
+        <p><strong>Donation Transparency:</strong> ${escHtml(s.donation_transparency || '')}
+        <p><strong>Application Transparency:</strong> ${s.application_transparency ? escHtml(s.application_transparency) : '<em>Not provided</em>'}
       </div>
 
       <div class="submission-card__csvs">
         <details class="csv-section">
-          <summary><strong>Financial Statements</strong> <span class="field-hint">(${s.financials.length} rows)</span></summary>
-          ${renderCSVTable(s.financials)}
+          <summary><strong>Financial Statements</strong> <span class="field-hint">(${financials.length} rows)</span></summary>
+          ${renderCSVTable(financials)}
         </details>
         <details class="csv-section">
-          <summary><strong>Budget</strong> <span class="field-hint">(${s.budget.length} rows)</span></summary>
-          ${renderCSVTable(s.budget)}
+          <summary><strong>Budget</strong> <span class="field-hint">(${budget.length} rows)</span></summary>
+          ${renderCSVTable(budget)}
         </details>
         <details class="csv-section">
-          <summary><strong>Donation &amp; Payment Methods</strong> <span class="field-hint">(${s.donations.length} rows)</span></summary>
-          ${renderCSVTable(s.donations)}
+          <summary><strong>Donation &amp; Payment Methods</strong> <span class="field-hint">(${donations.length} rows)</span></summary>
+          ${renderCSVTable(donations)}
         </details>
       </div>
+
+      ${buildLinkPanel(s)}
 
       <div class="submission-card__review">
         <div>
@@ -178,11 +275,11 @@ function renderPendingSubmissions() {
         </div>
         <div class="field-group">
           <label for="notes-${s.id}">Additional Notes <span class="badge badge--optional">Optional</span></label>
-          <textarea id="notes-${s.id}" rows="3" placeholder="Add any extra context to include in the rejection email."></textarea>
+          <textarea id="notes-${s.id}" rows="3" placeholder="Add any extra context to include in the rejection notification."></textarea>
         </div>
         <div class="submission-card__buttons">
-          <button type="button" class="btn btn--primary" data-approve="${s.id}">Approve</button>
-          <button type="button" class="btn btn--danger" data-reject="${s.id}">Reject &amp; Notify</button>
+          <button type="button" class="btn btn--primary"  data-approve="${s.id}">Approve</button>
+          <button type="button" class="btn btn--danger"   data-reject="${s.id}">Reject &amp; Notify</button>
         </div>
       </div>
     `;
@@ -190,21 +287,21 @@ function renderPendingSubmissions() {
   });
 }
 
-// ─── Correction Reasons ───────────────────────────────────────────────────────
-const reasonsManager = document.getElementById('reasons-manager');
-const reasonForm = document.getElementById('reason-form');
-const reasonLabelInput = document.getElementById('reason-label');
+// ─── Correction Reasons UI ────────────────────────────────────────────────────
+const reasonsManager       = document.getElementById('reasons-manager');
+const reasonForm           = document.getElementById('reason-form');
+const reasonLabelInput     = document.getElementById('reason-label');
 const reasonDescriptionInput = document.getElementById('reason-description');
 
 function sortedReasons() {
-  return [...correctionReasons].sort((a, b) => a.sortOrder - b.sortOrder);
+  return [...correctionReasons].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 }
 
 function buildReasonCheckboxes(submissionId) {
   return sortedReasons().filter(r => r.active).map(r => `
     <label class="checkbox-row">
       <input type="checkbox" name="reason-${submissionId}" value="${r.id}" />
-      <span><strong>${r.label}</strong><br /><small>${r.description}</small></span>
+      <span><strong>${escHtml(r.label)}</strong><br /><small>${escHtml(r.description)}</small></span>
     </label>`).join('');
 }
 
@@ -216,63 +313,119 @@ function renderReasonsManager() {
     card.innerHTML = `
       <div class="reason-card__content">
         <div>
-          <p class="reason-card__label">${r.label}</p>
-          <p class="reason-card__description">${r.description}</p>
-          <p class="reason-card__meta">Status: ${r.active ? 'Active' : 'Inactive'} &middot; Order: ${r.sortOrder}</p>
+          <p class="reason-card__label">${escHtml(r.label)}</p>
+          <p class="reason-card__description">${escHtml(r.description)}</p>
+          <p class="reason-card__meta">Status: ${r.active ? 'Active' : 'Inactive'} &middot; Order: ${r.sort_order}</p>
         </div>
         <div class="reason-card__actions">
           <button type="button" class="btn btn--small btn--secondary" data-action="toggle" data-id="${r.id}">${r.active ? 'Deactivate' : 'Activate'}</button>
-          <button type="button" class="btn btn--small btn--secondary" data-action="up" data-id="${r.id}" ${index === 0 ? 'disabled' : ''}>Up</button>
-          <button type="button" class="btn btn--small btn--secondary" data-action="down" data-id="${r.id}" ${index === correctionReasons.length - 1 ? 'disabled' : ''}>Down</button>
+          <button type="button" class="btn btn--small btn--secondary" data-action="up"     data-id="${r.id}" ${index === 0 ? 'disabled' : ''}>Up</button>
+          <button type="button" class="btn btn--small btn--secondary" data-action="down"   data-id="${r.id}" ${index === correctionReasons.length - 1 ? 'disabled' : ''}>Down</button>
         </div>
       </div>`;
     reasonsManager.appendChild(card);
   });
 }
 
-reasonForm.addEventListener('submit', e => {
+reasonForm.addEventListener('submit', async e => {
   e.preventDefault();
-  const label = reasonLabelInput.value.trim();
+  const label       = reasonLabelInput.value.trim();
   const description = reasonDescriptionInput.value.trim();
   if (!label || !description) return;
-  correctionReasons.push({ id: crypto.randomUUID(), label, description, active: true, sortOrder: correctionReasons.length + 1 });
+  await addReason(label, description);
   reasonForm.reset();
   renderReasonsManager();
   renderPendingSubmissions();
 });
 
-reasonsManager.addEventListener('click', e => {
+reasonsManager.addEventListener('click', async e => {
   const btn = e.target.closest('button');
   if (!btn) return;
   const { id, action } = btn.dataset;
   const reason = correctionReasons.find(r => r.id === id);
   if (!reason) return;
-  if (action === 'toggle') reason.active = !reason.active;
+
+  if (action === 'toggle') {
+    reason.active = !reason.active;
+    await saveReason(reason);
+  }
   const ordered = sortedReasons();
-  const index = ordered.findIndex(r => r.id === id);
-  if (action === 'up' && index > 0) { const o = ordered[index-1]; [reason.sortOrder, o.sortOrder] = [o.sortOrder, reason.sortOrder]; }
-  if (action === 'down' && index < ordered.length - 1) { const o = ordered[index+1]; [reason.sortOrder, o.sortOrder] = [o.sortOrder, reason.sortOrder]; }
+  const index   = ordered.findIndex(r => r.id === id);
+  if (action === 'up' && index > 0) {
+    const other = ordered[index - 1];
+    [reason.sort_order, other.sort_order] = [other.sort_order, reason.sort_order];
+    await Promise.all([saveReason(reason), saveReason(other)]);
+  }
+  if (action === 'down' && index < ordered.length - 1) {
+    const other = ordered[index + 1];
+    [reason.sort_order, other.sort_order] = [other.sort_order, reason.sort_order];
+    await Promise.all([saveReason(reason), saveReason(other)]);
+  }
   renderReasonsManager();
   renderPendingSubmissions();
 });
 
-submissionsContainer.addEventListener('click', e => {
+// ─── Submissions Actions ──────────────────────────────────────────────────────
+submissionsContainer.addEventListener('click', async e => {
+  // Approve
   const approveBtn = e.target.closest('[data-approve]');
-  const rejectBtn = e.target.closest('[data-reject]');
   if (approveBtn) {
-    // TODO: PATCH ledger.submissions SET status='approved' WHERE id=?
-    // TODO: Trigger community page generation
-    alert(`Prototype: submission ${approveBtn.dataset.approve} would be approved and published.`);
+    if (!confirm('Approve this submission and queue it for publication?')) return;
+    await approveSubmission(approveBtn.dataset.approve);
+    return;
   }
+
+  // Reject
+  const rejectBtn = e.target.closest('[data-reject]');
   if (rejectBtn) {
-    const id = rejectBtn.dataset.reject;
+    const id      = rejectBtn.dataset.reject;
     const checked = Array.from(document.querySelectorAll(`input[name="reason-${id}"]:checked`));
-    if (checked.length === 0) { alert('Select at least one correction reason before rejecting.'); return; }
-    // TODO: PATCH ledger.submissions SET status='rejected', rejection_notes=? WHERE id=?
-    // TODO: Invoke Supabase Edge Function: send-rejection-email with reason IDs + notes
-    alert(`Prototype: submission ${id} would be rejected and a rejection email sent to the submitter.`);
+    if (checked.length === 0) { showToast('Select at least one correction reason before rejecting.', 'error'); return; }
+    const notes   = document.getElementById(`notes-${id}`)?.value.trim() || '';
+    const ids     = checked.map(c => c.value);
+    await rejectSubmission(id, ids, notes);
+    return;
+  }
+
+  // Link Records
+  const linkBtn = e.target.closest('[data-link]');
+  if (linkBtn) {
+    const sourceId  = linkBtn.dataset.link;
+    const selectEl  = document.getElementById(`link-target-${sourceId}`);
+    const targetRef = selectEl?.value;
+    if (!targetRef) { showToast('Select a reference to link to.', 'error'); return; }
+    await linkSubmissions(sourceId, targetRef);
+    return;
   }
 });
 
-renderReasonsManager();
-renderPendingSubmissions();
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function showToast(message, type = 'success') {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.style.cssText = 'position:fixed;bottom:var(--space-6);right:var(--space-6);z-index:9999;display:flex;flex-direction:column;gap:var(--space-2);';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  toast.className = `notice notice--${type === 'error' ? 'warning' : 'success'} toast`;
+  toast.style.cssText = 'min-width:260px;max-width:380px;box-shadow:var(--shadow-lg);animation:fadeInUp 200ms ease;';
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
