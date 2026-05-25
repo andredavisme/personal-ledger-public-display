@@ -1,0 +1,43 @@
+# netlify.toml — Netlify deployment configuration
+#
+# MIGRATION NOTE:
+# If migrating away from Netlify to a self-hosted environment:
+# 1. Replace this file with a GitHub Actions workflow (.github/workflows/deploy.yml)
+#    that replicates the build and deploy steps below.
+# 2. Replace [[redirects]] rules with Nginx/Caddy location blocks or
+#    equivalent routing config on your host.
+# 3. Replace environment variable management in the Netlify dashboard with
+#    your host's secrets manager or a .env file (never commit secrets).
+# 4. Auth gate on /admin is handled by Netlify Identity — on migration,
+#    replace with Supabase Auth middleware (see assets/js/auth.js).
+
+[build]
+  publish = "."          # Serve from repo root (all HTML files at root level)
+  command = ""           # No build step needed — pure static HTML/CSS/JS
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# ─── Admin page auth gate ─────────────────────────────────────────────────────
+# Restricts /admin.html to authenticated Netlify Identity users with 'admin' role.
+# MIGRATION: Replace with Supabase Auth session check in auth.js + server middleware.
+[[headers]]
+  for = "/admin.html"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# ─── Redirects ────────────────────────────────────────────────────────────────
+# Community pages: /community/:id → community-page.html?id=:id
+# MIGRATION: Replicate with Nginx try_files or equivalent rewrite rule.
+[[redirects]]
+  from = "/community/:id"
+  to = "/community-page.html?id=:id"
+  status = 200
+
+# SPA fallback — serve index.html for unmatched routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
