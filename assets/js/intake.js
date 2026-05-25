@@ -9,16 +9,42 @@
  *    - ledger.submission_financials (parsed financial CSV rows)
  *    - ledger.submission_budget     (parsed budget CSV rows)
  *    - ledger.submission_donations  (parsed donation CSV rows)
+ * 4. Confirmation modal — shown after database receipt is verified
  *
- * MIGRATION NOTE:
- * This file uses the Supabase client from supabase.js.
- * No changes needed here on auth provider migration.
- * If the ledger schema changes, update the INSERT calls below.
+ * KNOWN BEHAVIOUR:
+ * - Donation CSV rows with an empty handle_or_address are skipped (not an error).
+ *   The template includes placeholder rows for methods not actively used.
+ * - This file must be loaded with type="module" in the HTML script tag.
  */
 
 import supabase from './supabase.js';
 
-const form = document.getElementById('intake-form');
+const form  = document.getElementById('intake-form');
+const modal = document.getElementById('submission-modal');
+const modalCloseBtn = document.getElementById('modal-close-btn');
+
+// ─── Modal ───────────────────────────────────────────────────────────────────
+
+function openModal() {
+  modal.classList.add('is-open');
+  modalCloseBtn.focus();
+}
+
+function closeModal() {
+  modal.classList.remove('is-open');
+}
+
+modalCloseBtn?.addEventListener('click', closeModal);
+
+// Close on backdrop click
+modal?.addEventListener('click', e => {
+  if (e.target === modal) closeModal();
+});
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && modal.classList.contains('is-open')) closeModal();
+});
 
 // ─── CSV Parser ──────────────────────────────────────────────────────────────
 
@@ -73,10 +99,14 @@ function validateBudget(rows) {
 function validateDonations(rows) {
   const errors = [];
   const validMethods = ['paypal', 'stripe', 'postal', 'pos', 'manual', 'cryptocurrency'];
-  if (rows.length === 0) errors.push('At least one donation method is required.');
+  // Filter to rows that have a valid method with a populated handle — template rows without
+  // a handle are treated as placeholder-only and skipped, not an error.
+  const activeRows = rows.filter(r => r.method && validMethods.includes(r.method.toLowerCase()) && r.handle_or_address?.trim());
+  if (activeRows.length === 0) errors.push('At least one donation method with a handle or address is required.');
   rows.forEach((r, i) => {
-    if (!validMethods.includes(r.method?.toLowerCase())) errors.push(`Row ${i + 2}: method must be one of PayPal, Stripe, Postal, POS, Manual, Cryptocurrency.`);
-    if (!r.handle_or_address) errors.push(`Row ${i + 2}: handle or address is required.`);
+    if (r.method && !validMethods.includes(r.method.toLowerCase())) {
+      errors.push(`Row ${i + 2}: method "${r.method}" is not recognised. Use PayPal, Stripe, Postal, POS, Manual, or Cryptocurrency.`);
+    }
   });
   return errors;
 }
@@ -105,14 +135,6 @@ function setSubmitting(isSubmitting) {
   const btn = form.querySelector('button[type="submit"]');
   btn.disabled = isSubmitting;
   btn.textContent = isSubmitting ? 'Submitting…' : 'Submit for Review';
-}
-
-function showSuccess() {
-  form.innerHTML = `
-    <div class="notice notice--tip" style="margin-top:2rem;text-align:center;padding:2.5rem;">
-      <h3 style="margin-bottom:0.75rem;">Submission received ✔</h3>
-      <p>Thank you. Your submission is under review. You will be contacted at the email address you provided if any corrections are needed.</p>
-    </div>`;
 }
 
 // ─── Form Submit Handler ────────────────────────────────────────────────────────
@@ -190,6 +212,16 @@ form.addEventListener('submit', async event => {
 
     const submissionId = submission.id;
 
+    // Verify the submission exists in the database before showing confirmation
+    const { data: verify, error: verifyError } = await supabase
+      .schema('ledger')
+      .from('submissions')
+      .select('id, status')
+      .eq('id', submissionId)
+      .single();
+
+    if (verifyError || !verify) throw new Error('Submission could not be verified. Please try again.');
+
     // Insert CSV rows in parallel
     const financialInserts = financialRows.map((r, i) => ({
       submission_id: submissionId,
@@ -210,28 +242,34 @@ form.addEventListener('submit', async event => {
       sort_order:     i
     }));
 
-    const donationInserts = donationRows.map((r, i) => {
-      const methodMap = { paypal: 'PayPal', stripe: 'Stripe', postal: 'Postal', pos: 'POS', manual: 'Manual', cryptocurrency: 'Cryptocurrency' };
-      return {
+    const validMethods = ['paypal', 'stripe', 'postal', 'pos', 'manual', 'cryptocurrency'];
+    const methodMap = { paypal: 'PayPal', stripe: 'Stripe', postal: 'Postal', pos: 'POS', manual: 'Manual', cryptocurrency: 'Cryptocurrency' };
+    // Only insert donation rows that have an active handle — skip template placeholders
+    const donationInserts = donationRows
+      .filter(r => r.method && validMethods.includes(r.method.toLowerCase()) && r.handle_or_address?.trim())
+      .map((r, i) => ({
         submission_id:     submissionId,
-        method:            methodMap[r.method?.toLowerCase()] || r.method,
+        method:            methodMap[r.method.toLowerCase()] || r.method,
         handle_or_address: r.handle_or_address,
         notes:             r.notes || null,
         sort_order:        i
-      };
-    });
+      }));
 
     const [{ error: fErr }, { error: bErr }, { error: dErr }] = await Promise.all([
       supabase.schema('ledger').from('submission_financials').insert(financialInserts),
       supabase.schema('ledger').from('submission_budget').insert(budgetInserts),
-      supabase.schema('ledger').from('submission_donations').insert(donationInserts)
+      donationInserts.length
+        ? supabase.schema('ledger').from('submission_donations').insert(donationInserts)
+        : Promise.resolve({ error: null })
     ]);
 
     if (fErr) throw fErr;
     if (bErr) throw bErr;
     if (dErr) throw dErr;
 
-    showSuccess();
+    // Reset form and show confirmation modal
+    form.reset();
+    openModal();
 
   } catch (err) {
     console.error('[Intake] Submission error:', err);
@@ -240,5 +278,6 @@ form.addEventListener('submit', async event => {
     notice.className = 'notice notice--warning';
     notice.innerHTML = `<strong>Submission failed.</strong> Please try again. If the problem persists, contact the administrator.<br><small>${err.message}</small>`;
     form.prepend(notice);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 });
