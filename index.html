@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Community Ledger — Submit Your Community</title>
   <link rel="stylesheet" href="assets/css/style.css" />
+  <!-- Netlify Identity Widget -->
+  <!-- Required on the root page to handle invite_token and recovery_token URL fragments -->
+  <!-- MIGRATION: Remove this script tag when switching to Supabase Auth -->
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </head>
 <body>
   <header class="site-header">
@@ -72,7 +76,7 @@
 
         <div class="field-group">
           <label for="values">Core Values <span class="badge badge--required">Required</span></label>
-          <textarea id="values" name="values" rows="4" placeholder="What principles guide your community’s existence?" required></textarea>
+          <textarea id="values" name="values" rows="4" placeholder="What principles guide your community's existence?" required></textarea>
         </div>
 
         <div class="field-group">
@@ -158,5 +162,16 @@
   </footer>
 
   <script src="assets/js/intake.js"></script>
+  <script>
+    // Handle Netlify Identity invite and recovery tokens on the root page.
+    // MIGRATION: Remove this block when switching to Supabase Auth.
+    if (window.netlifyIdentity) {
+      window.netlifyIdentity.on('init', user => {
+        if (!user) window.netlifyIdentity.on('login', () => {
+          document.location.href = '/admin.html';
+        });
+      });
+    }
+  </script>
 </body>
 </html>
