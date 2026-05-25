@@ -14,8 +14,8 @@ import Auth from './auth.js';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // ─── Supabase Client ──────────────────────────────────────────────────────────
-const SUPABASE_URL  = 'https://lkugkbgqidojxfhldvzb.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxrdWdrYmdxaWRvanhmaGxkdnpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxMTI4NTUsImV4cCI6MjA2MzY4ODg1NX0.oFqLqWQ1LO5CjB0X3FKkBvdQnIHJi2WfEKiAj1V_vNA';
+const SUPABASE_URL  = 'https://hhyhulqngdkwsxhymmcd.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoeWh1bHFuZ2Rrd3N4aHltbWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxOTMwMDEsImV4cCI6MjA2Mzc2OTAwMX0.abc123placeholder';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ─── Auth Gate ────────────────────────────────────────────────────────────────
@@ -88,10 +88,24 @@ async function loadSubmissions() {
     .schema('ledger')
     .from('submissions_with_collision')
     .select('*')
-    .in('status', ['pending', 'flagged'])
-    .order('created_at', { ascending: true });
+    .in('status', ['pending'])
+    .order('submitted_at', { ascending: true });
   if (error) { console.error('[admin] loadSubmissions:', error); return; }
-  submissions = data || [];
+
+  // Load child table data for each submission
+  const rows = data || [];
+  await Promise.all(rows.map(async s => {
+    const [{ data: financials }, { data: budget }, { data: donations }] = await Promise.all([
+      supabase.schema('ledger').from('submission_financials').select('*').eq('submission_id', s.id).order('sort_order'),
+      supabase.schema('ledger').from('submission_budget').select('*').eq('submission_id', s.id).order('sort_order'),
+      supabase.schema('ledger').from('submission_donations').select('*').eq('submission_id', s.id).order('sort_order'),
+    ]);
+    s.financials = financials || [];
+    s.budget     = budget     || [];
+    s.donations  = donations  || [];
+  }));
+
+  submissions = rows;
 }
 
 async function approveSubmission(id) {
@@ -124,7 +138,6 @@ async function rejectSubmission(id, reasonIds, notes) {
 }
 
 async function linkSubmissions(sourceId, targetRef) {
-  // Tag source submission as linked to target reference
   const { error } = await supabase
     .schema('ledger')
     .from('submissions')
@@ -139,10 +152,10 @@ async function linkSubmissions(sourceId, targetRef) {
 // ─── CSV Table Renderer ────────────────────────────────────────────────────────
 function renderCSVTable(rows) {
   if (!rows || rows.length === 0) return '<p class="field-hint">No data provided.</p>';
-  const headers = Object.keys(rows[0]);
+  const headers = Object.keys(rows[0]).filter(h => !['id','submission_id','sort_order'].includes(h));
   const headerRow = headers.map(h => `<th>${h.replace(/_/g, ' ')}</th>`).join('');
   const dataRows  = rows.map(row =>
-    `<tr>${headers.map(h => `<td>${row[h] || '<span class="empty">—</span>'}</td>`).join('')}</tr>`
+    `<tr>${headers.map(h => `<td>${row[h] ?? '<span class="empty">—</span>'}</td>`).join('')}</tr>`
   ).join('');
   return `
     <div class="csv-table-wrap">
@@ -156,7 +169,6 @@ function renderCSVTable(rows) {
 // ─── Collision Alert Banner ───────────────────────────────────────────────────
 function buildCollisionBanner(s) {
   if (!s.reference_collision) return '';
-  // Find all other submissions sharing this reference
   const siblings = submissions
     .filter(x => x.submitter_reference === s.submitter_reference && x.id !== s.id)
     .map(x => `<strong>${x.community_name || x.id}</strong>`)
@@ -226,10 +238,10 @@ function renderPendingSubmissions() {
         <div>
           <h4>${escHtml(s.community_name || '—')}</h4>
           <p>
-            ${escHtml(s.submitter_name || '—')} &middot;
+            ${escHtml(s.full_name || '—')} &middot;
             ${escHtml(s.email || '—')} &middot;
             ${escHtml(s.location || '—')} &middot;
-            Submitted: ${formatDate(s.created_at)}
+            Submitted: ${formatDate(s.submitted_at)}
           </p>
           <p class="submission-ref">
             Reference ID: <code>${escHtml(s.submitter_reference || '—')}</code>
@@ -288,9 +300,9 @@ function renderPendingSubmissions() {
 }
 
 // ─── Correction Reasons UI ────────────────────────────────────────────────────
-const reasonsManager       = document.getElementById('reasons-manager');
-const reasonForm           = document.getElementById('reason-form');
-const reasonLabelInput     = document.getElementById('reason-label');
+const reasonsManager         = document.getElementById('reasons-manager');
+const reasonForm             = document.getElementById('reason-form');
+const reasonLabelInput       = document.getElementById('reason-label');
 const reasonDescriptionInput = document.getElementById('reason-description');
 
 function sortedReasons() {
@@ -367,7 +379,6 @@ reasonsManager.addEventListener('click', async e => {
 
 // ─── Submissions Actions ──────────────────────────────────────────────────────
 submissionsContainer.addEventListener('click', async e => {
-  // Approve
   const approveBtn = e.target.closest('[data-approve]');
   if (approveBtn) {
     if (!confirm('Approve this submission and queue it for publication?')) return;
@@ -375,7 +386,6 @@ submissionsContainer.addEventListener('click', async e => {
     return;
   }
 
-  // Reject
   const rejectBtn = e.target.closest('[data-reject]');
   if (rejectBtn) {
     const id      = rejectBtn.dataset.reject;
@@ -387,7 +397,6 @@ submissionsContainer.addEventListener('click', async e => {
     return;
   }
 
-  // Link Records
   const linkBtn = e.target.closest('[data-link]');
   if (linkBtn) {
     const sourceId  = linkBtn.dataset.link;
