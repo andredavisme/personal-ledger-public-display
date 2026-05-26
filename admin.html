@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Community Ledger — Administration</title>
   <link rel="stylesheet" href="assets/css/style.css" />
-  <!-- Netlify Identity Widget -->
-  <!-- MIGRATION: Remove this script tag when switching to Supabase Auth -->
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </head>
 <body class="admin-body">
 
@@ -39,9 +36,6 @@
       <section class="page-intro">
         <h2>Administration</h2>
         <p class="section-desc">Review pending submissions, approve for publication, or reject with structured correction reasons and optional notes.</p>
-        <div class="notice notice--warning">
-          <strong>Prototype:</strong> Data shown is placeholder. CSV previews are parsed and rendered programmatically from submission data — no file access required. Backend persistence and email will be connected after schema implementation.
-        </div>
       </section>
 
       <section class="form-section">
@@ -69,7 +63,7 @@
         <div id="reasons-manager" class="reasons-manager"></div>
       </section>
 
-      <!-- ═══ Developer Test Panel ═══════════════════════════════════════════
+      <!-- ═══ Developer Test Panel ═══════════════════════════════════════════════════════════════════════
            Visible only when ?dev=true is in the URL.
            Lets admins trigger Edge Functions without recreating submissions.
       ════════════════════════════════════════════════════════════════════════ -->
