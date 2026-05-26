@@ -26,24 +26,20 @@ At the beginning of every new thread or work session:
 
 ---
 
-### 🕒 May 26, 2026 — Session 2 (AM)
-**Status at close:** Active development — donation capture Phase 1 backend complete, frontend pending
+### 🕒 May 26, 2026 — Session 3 (Late Morning)
+**Status at close:** Housekeeping — documentation infrastructure formalized; no feature code written
 
 #### ✅ Completed
 | Item | Notes |
 |---|---|
-| Seeded correction_reasons table | 4 default records inserted; admin UI confirmed DB-driven with no hardcoded values |
-| Reviewed community.js | Fully DB-driven — no hardcoded data; page is empty only because no approved submissions exist yet |
-| Scoped donation capture | Original plan had no donation capture spec — confirmed gap, decided to build it |
-| Created donation-capture.md architecture spec | Phase 1 (self-reported), Phase 2 (recognition wall), Phase 3 (processor verification) documented |
-| Ran Phase 1 DB migration | Added 9 columns to public.donations; added donation_id + submission_id + wall_message to public.recognition_wall; RLS policies applied |
-| Deployed send-donation-receipt Edge Function | Matches send-rejection-email pattern; Gmail SMTP via denomailer; stamps receipt_sent_at on send |
-| Created public.documentation_catalog table | Searchable by doc_type, category, tags[], status; seeded with 14 docs; RLS applied |
-| Updated project-reference.md | Added 3 new tables, new edge function, documentation catalog section, updated open items |
-| Added Session Start Protocol to handoff | Catalog-first habit formalized for all future sessions |
-| Restructured handoff as living log | Single document now holds full session history with timestamps |
+| Identified correct Supabase project | Personal Ledger lives in `andredavisme's Project` (`hhyhulqngdkwsxhymmcd`), not the Web App Dev Course project |
+| Reviewed documentation_catalog | All 15 docs confirmed current as of May 26, 2026 |
+| Added Session Start Protocol to handoff | Catalog-first habit — query Supabase catalog, read handoff, read project-reference before any work |
+| Restructured handoff as living log | Single document holds full session history; newest entry always at top |
+| Updated documentation_catalog entry | Title and description updated to reflect living log format |
+| Defined session open/close commands | “Start a new session for the Personal Ledger project.” and “Close out this session and update the handoff log.” |
 
-#### 🟡 Deferred — Needs Decision
+#### 🟡 Deferred — Needs Decision (carried from Session 2)
 - **Phase 2 recognition wall questions** (see `docs/architecture/donation-capture.md`):
   - Should donation amounts be visible on the public wall (opt-in by donor)?
   - Should communities receive a “new donation” notification email?
@@ -77,9 +73,34 @@ At the beginning of every new thread or work session:
 #### 📚 Docs Updated
 | File | What Changed |
 |---|---|
-| docs/architecture/donation-capture.md | New file — full Phase 1–3 donation capture spec |
-| docs/project-reference.md | Added 3 new tables, new edge function, documentation catalog section |
-| docs/session-handoff.md | Restructured as living log; Session Start Protocol added |
+| docs/session-handoff.md | Restructured as living log; Session Start Protocol added; Session 3 entry appended |
+| documentation_catalog (Supabase) | Updated title + description for session-handoff entry |
+
+---
+
+### 🕒 May 26, 2026 — Session 2 (AM)
+**Status at close:** Active development — donation capture Phase 1 backend complete, frontend pending
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Seeded correction_reasons table | 4 default records inserted; admin UI confirmed DB-driven with no hardcoded values |
+| Reviewed community.js | Fully DB-driven — no hardcoded data; page is empty only because no approved submissions exist yet |
+| Scoped donation capture | Original plan had no donation capture spec — confirmed gap, decided to build it |
+| Created donation-capture.md architecture spec | Phase 1 (self-reported), Phase 2 (recognition wall), Phase 3 (processor verification) documented |
+| Ran Phase 1 DB migration | Added 9 columns to public.donations; added donation_id + submission_id + wall_message to public.recognition_wall; RLS policies applied |
+| Deployed send-donation-receipt Edge Function | Matches send-rejection-email pattern; Gmail SMTP via denomailer; stamps receipt_sent_at on send |
+| Created public.documentation_catalog table | Searchable by doc_type, category, tags[], status; seeded with 14 docs; RLS applied |
+| Updated project-reference.md | Added 3 new tables, new edge function, documentation catalog section, updated open items |
+
+#### 🟠 Open Items Carried Into Session 3
+- [ ] Link community.css in community.html
+- [ ] Build “I Donated” modal
+- [ ] Test send-donation-receipt
+- [ ] Test send-rejection-email
+- [ ] Add admin_actions audit log view
+- [ ] Verify admin UI loads submissions correctly
+- [ ] Answer Phase 2 open questions
 
 ---
 
