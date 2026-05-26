@@ -26,6 +26,61 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 26, 2026 — Session 4 (Afternoon)
+**Status at close:** Active development — "I Intend to Donate" flow fully built and tested end-to-end; PayPal donation button connected; Edge Function receipt bug fixed; test data cleared
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Built "I Intend to Donate" modal | Two-step flow: intent form → DB insert → confirmation screen with payment button; replaces previous "I Donated" spec for Phase 1 |
+| Donation method cards redesigned | Single "I Intend to Donate" button per card; payment button deferred to confirmation screen only |
+| Fixed `[hidden]` override bug | `.donation-confirm` has `display:flex` which overrode `hidden` attr — fixed with `[hidden] { display:none !important; }` at top of community.css |
+| Connected PayPal donation button | Builds `https://www.paypal.com/donate?business=EMAIL&currency_code=USD&amount=X` from `handle_or_address` field; amount pre-filled from intent form value |
+| Refactored payment data flow | Changed from pre-built HTML encoded on button → JSON `paymentData` resolved at confirm time so amount is available for URL construction |
+| Fixed `receipt_sent_at` NULL bug | Edge Function was stamping timestamp before SMTP send; moved `update` into `try` block after `sendViaGmailSMTP` resolves — failed sends now leave field NULL and remain retryable |
+| Cleared test donation records | All rows deleted from `public.donations`; tables clean for production |
+
+#### 🟡 Deferred — Needs Decision (carried from Session 2)
+- **Phase 2 recognition wall questions** (see `docs/architecture/donation-capture.md`):
+  - Should donation amounts be visible on the public wall (opt-in by donor)?
+  - Should communities receive a "new donation" notification email?
+  - Should there be a minimum donation amount to prevent spam?
+  - Per-community recognition wall or single global wall?
+- **Supabase anon key in supabase.js** — publishable, client-side, not a risk; deferred unless Vite build step adopted
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Test send-donation-receipt** — Edge Function v2 deployed; needs live test with real Gmail credentials
+- [ ] **Test send-rejection-email** — still untested with live data
+- [ ] **Add admin_actions audit log view in Supabase** — table exists, view not created
+- [ ] **Verify admin UI loads submissions correctly** — pending submissions list not confirmed against live data
+- [ ] **Answer Phase 2 open questions** — required before building recognition wall
+- [ ] **Admin receipt retry UI** — trigger `send-donation-receipt` manually for NULL `receipt_sent_at` records
+- [ ] **Recognition wall display page** — Phase 2; pending open question decisions
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+| Only 1 test submission in DB — no real approved submissions yet | community.html renders correctly but appears empty to real visitors |
+
+#### 📍 Where to Resume
+1. **Test send-donation-receipt** — trigger with a real donation record and confirm Gmail delivery + `receipt_sent_at` stamps correctly
+2. **Test send-rejection-email** — same pattern, close out both edge function tests
+3. **Answer Phase 2 open questions** — then build recognition wall
+4. **Admin audit log view** — minor but completes the admin panel
+5. **Admin receipt retry UI** — surfaces NULL `receipt_sent_at` records for manual re-trigger
+
+#### 📚 Commits This Session
+| Commit | What Changed |
+|---|---|
+| `ef3c1515` | Intent modal: log first, show payment button on confirmation screen |
+| `df47699f` | Fix: `[hidden]` always wins over `display:flex` on confirm view |
+| `204bc5d4` | Connect PayPal button: build donate URL from `handle_or_address`, pre-fill amount |
+| Edge Function v2 | `send-donation-receipt`: moved `receipt_sent_at` stamp after confirmed SMTP success |
+
+---
+
 ### 🕒 May 26, 2026 — Session 3 (Late Morning)
 **Status at close:** Housekeeping — documentation infrastructure formalized; no feature code written
 
@@ -37,19 +92,19 @@ At the beginning of every new thread or work session:
 | Added Session Start Protocol to handoff | Catalog-first habit — query Supabase catalog, read handoff, read project-reference before any work |
 | Restructured handoff as living log | Single document holds full session history; newest entry always at top |
 | Updated documentation_catalog entry | Title and description updated to reflect living log format |
-| Defined session open/close commands | “Start a new session for the Personal Ledger project.” and “Close out this session and update the handoff log.” |
+| Defined session open/close commands | "Start a new session for the Personal Ledger project." and "Close out this session and update the handoff log." |
 
 #### 🟡 Deferred — Needs Decision (carried from Session 2)
 - **Phase 2 recognition wall questions** (see `docs/architecture/donation-capture.md`):
   - Should donation amounts be visible on the public wall (opt-in by donor)?
-  - Should communities receive a “new donation” notification email?
+  - Should communities receive a "new donation" notification email?
   - Should there be a minimum donation amount to prevent spam?
   - Per-community recognition wall or single global wall?
 - **Supabase anon key in supabase.js** — publishable, client-side, not a risk; deferred unless Vite build step adopted
 
 #### 🟠 Open Items Carried Forward
 - [ ] **Link community.css in community.html** — stylesheet exists, not referenced in HTML head
-- [ ] **Build “I Donated” modal** — Phase 1 frontend; form → supabase insert → call send-donation-receipt
+- [ ] **Build "I Donated" modal** — Phase 1 frontend; form → supabase insert → call send-donation-receipt
 - [ ] **Test send-donation-receipt** — no live test run yet
 - [ ] **Test send-rejection-email** — still untested with live data
 - [ ] **Add admin_actions audit log view in Supabase** — table exists, view not created
@@ -65,7 +120,7 @@ At the beginning of every new thread or work session:
 
 #### 📍 Where to Resume
 1. **Link community.css** — smallest gap, closes a visible styling issue
-2. **Build “I Donated” modal** — completes the Phase 1 donation capture loop
+2. **Build "I Donated" modal** — completes the Phase 1 donation capture loop
 3. **Test both edge functions** — rejection email and donation receipt
 4. **Answer Phase 2 open questions** — then build recognition wall
 5. **Admin audit log view** — minor but completes the admin panel
@@ -95,7 +150,7 @@ At the beginning of every new thread or work session:
 
 #### 🟠 Open Items Carried Into Session 3
 - [ ] Link community.css in community.html
-- [ ] Build “I Donated” modal
+- [ ] Build "I Donated" modal
 - [ ] Test send-donation-receipt
 - [ ] Test send-rejection-email
 - [ ] Add admin_actions audit log view
