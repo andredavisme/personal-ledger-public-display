@@ -62,7 +62,7 @@ You can now log into the admin page with those credentials.
 
 ---
 
-## Troubleshooting: When the Dashboard Doesn’t Cooperate
+## Troubleshooting: When the Dashboard Doesn't Cooperate
 
 Supabase's Auth UI in the dashboard is functional but not always intuitive. During the development of this project, we encountered a situation that is worth documenting directly.
 
@@ -112,25 +112,77 @@ Here is what the submitter receives:
 - Any additional notes you added
 - An instruction to correct and resubmit
 
-The email is sent through a service called **Resend**. Resend is free for the volume this project requires.
+---
 
-### How to Set Up Resend
+## ⚠️ Known Blocker — Free Email Domains Cannot Be Used as Sending Addresses
+
+This was discovered during development and is documented here so you do not repeat the same path.
+
+Rejection emails are sent through **Resend**, which requires that the *sending* address (the `From:` field) belong to a domain you own and have verified with DNS records. Free public email domains — **gmail.com, yahoo.com, outlook.com, icloud.com, and all similar providers** — are explicitly blocked by Resend. You will see this error:
+
+> *"We don't allow free public domains. Please use a domain you own instead."*
+
+This is not a configuration problem. It is a hard policy enforced by Resend to prevent spam abuse. There is no workaround within Resend.
+
+**What this means practically:** If you do not own a custom domain (e.g. `yourcommunity.org`), you cannot use a Resend-verified sending address in production.
+
+---
+
+## Email Provider Options
+
+Three paths are available depending on your situation:
+
+### Option A — Own a Custom Domain (Recommended for Production)
+
+If you own a domain — even a cheap one ($10–15/year from Namecheap, Google Domains, or Cloudflare Registrar) — this is the cleanest path:
+
+1. Go to [resend.com/domains](https://resend.com/domains) → **Add Domain**
+2. Enter your domain (e.g. `yourdomain.org`)
+3. Resend will provide DNS records (SPF, DKIM, MX) to add at your domain registrar
+4. Add those records and click **Verify** in Resend — propagation takes a few minutes
+5. Set `EMAIL_FROM` in Supabase Secrets to `noreply@yourdomain.org`
+
+Once verified, emails land reliably and look professional.
+
+### Option B — Gmail SMTP via Google App Password (No Custom Domain Required)
+
+If you use Gmail and do not want to purchase a domain, you can send directly from your Gmail address using **Google App Passwords** and Gmail's SMTP server. This requires rewriting the Edge Function to use SMTP instead of the Resend API, but it is fully supported and free.
+
+**Prerequisites:**
+- Google account with 2-Step Verification enabled
+- A Google App Password generated at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+
+**Supabase Secrets needed:**
+- `GMAIL_USER` — your full Gmail address (e.g. `you@gmail.com`)
+- `GMAIL_APP_PASSWORD` — the 16-character app password from Google
+
+The Edge Function sends via `smtp.gmail.com:465` (SSL). Google allows up to 500 emails/day on a free account — far more than this project requires.
+
+> This option trades Resend's simplicity for not needing a custom domain. The email arrives from your actual Gmail address, which is recognizable to recipients.
+
+### Option C — Resend Test Address (Development Only)
+
+Resend provides a shared sending address `onboarding@resend.dev` that works without domain verification. It can only deliver to **your own verified email address** in Resend — not to arbitrary recipients. Use this only to confirm the pipeline works end to end during development.
+
+Set `EMAIL_FROM` to `onboarding@resend.dev` in Supabase Secrets for testing, then switch to Option A or B before going live.
+
+---
+
+## How to Set Up Resend (Option A)
 
 1. Go to [resend.com](https://resend.com) and create a free account
-2. In the Resend dashboard, create an **API key** — this is a long password that lets your application send emails on your behalf
-3. Copy the key immediately — Resend will only show it to you once
-4. Go to your Supabase dashboard → **Project Settings** → **Edge Functions** → **Secrets**
-5. Add a secret named `RESEND_API_KEY` and paste your key as the value
-6. Add a second secret named `EMAIL_FROM` with the address you want emails to come from (example: `noreply@yourcommunity.org`)
+2. In the Resend dashboard, create an **API key** — copy it immediately, it is shown only once
+3. Go to your Supabase dashboard → **Project Settings** → **Edge Functions** → **Secrets**
+4. Add a secret named `RESEND_API_KEY` and paste your key
+5. Add a secret named `EMAIL_FROM` with your verified sending address (e.g. `noreply@yourcommunity.org`)
+6. Verify your domain at [resend.com/domains](https://resend.com/domains) following the DNS steps above
 
 > ### 💡 Help Your Future You — Treat API Keys Like Passwords
-> An API key is essentially a password that lets a service act on your behalf. If someone else gets your Resend API key, they can send emails as you. A few rules to internalize now:
+> An API key is essentially a password that lets a service act on your behalf. If someone else gets your Resend API key, they can send emails as you. Rules:
 > - **Never paste an API key into a chat, email, or document** that others can see
 > - **Never commit an API key to GitHub** — even a private repository
-> - If you accidentally share one, go to that service immediately and rotate it (delete the old key, create a new one)
-> - Store keys in your password manager or directly in the service's secrets vault — nowhere else
->
-> This project stores all keys in Supabase Secrets, which is the right place for them. The application reads them automatically — you never need to paste them into your code.
+> - If you accidentally share one, rotate it immediately (delete the old key, create a new one)
+> - Store keys in Supabase Secrets only — never in code
 
 ---
 
@@ -143,17 +195,15 @@ https://your-site.pages.dev/admin.html?dev=true
 ```
 
 The test panel lets you:
-- Fire the rejection email at any existing submission by pasting its ID
+- Edit test fixture data (financials, budget, donations, core submission fields) and insert it as a test record with a reserved UUID
+- Fire the rejection email at any existing submission by pasting its UUID
 - Load a submission's stored data to inspect it
-- Verify that your Resend key and email settings are working
+- Verify that your email configuration is working
 
 This means you do not have to submit a brand new test form every time you want to check whether something is working.
 
 > ### 💡 Help Your Future You — Use the Test Panel Before Going Live
 > Any time you change your email configuration, rotate a key, or update the rejection email template, use the test panel to confirm everything still works before a real rejection goes out. A submitter who receives a broken or blank email has a worse experience than one who receives a delayed email. Test first, then use in production.
-
-> ### 💡 Help Your Future You — Keep a "Rejected" Test Submission
-> After your first successful test rejection, do not delete that submission from Supabase. Keep it in the database as a permanent test record. Label it clearly — for example, set the `community_name` field to `[TEST] Do Not Approve`. Whenever you need to test the rejection flow again, you have a UUID ready to paste into the test panel without filling out the form from scratch.
 
 ---
 
@@ -170,3 +220,5 @@ This means you do not have to submit a brand new test form every time you want t
 **4.** The test panel is hidden behind `?dev=true` in the URL. It is not locked behind a separate password — just hidden. Is that level of protection sufficient? Why or why not? What would make it more secure if this application grew?
 
 **5.** Three options were available to reset a stuck admin password: email reset, dashboard UI, and direct SQL. We chose SQL. In your own words, explain why direct database access was the most reliable option in that moment — and what conditions would need to be true for the email reset to have been equally reliable.
+
+**6.** Resend blocks free public email domains (gmail.com, yahoo.com, etc.) as sending addresses. In your own words, explain *why* an email service would enforce this restriction — what problem are they preventing?
