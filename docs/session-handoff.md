@@ -1,6 +1,6 @@
 # Session Handoff
-**Session Date:** May 25, 2026
-**Status:** Active development — core infrastructure complete, refinements pending
+**Session Date:** May 26, 2026
+**Status:** Active development — donation capture Phase 1 backend complete, frontend pending
 
 ---
 
@@ -8,42 +8,40 @@
 
 | Item | Notes |
 |---|---|
-| Migrated hosting from Netlify → Cloudflare Pages | Netlify free tier bandwidth limit was hit during development |
-| Live site deployed | https://personal-ledger-public-display.pages.dev |
-| Migrated auth from Netlify Identity → Supabase Auth | Netlify Identity only works on Netlify hosting |
-| Built custom login modal in auth.js | Email/password, no external widget dependency |
-| Removed Netlify Identity script from admin.html | Was causing login button to grey out with no modal |
-| Fixed Supabase redirect URLs | Site URL and allowlist updated for Cloudflare Pages domain |
-| Admin login confirmed working | Supabase Auth user created, password set via SQL |
-| Updated project-reference.md with live URLs | All three pages documented |
-| Updated tutorial Section 6 | Added Cloudflare UX gotcha (Worker vs Pages flow) |
-| Updated tutorial Section 5 | Added admin user setup, shared Supabase project warning, SQL password reset |
+| Seeded correction_reasons table | 4 default records inserted; admin UI confirmed DB-driven with no hardcoded values |
+| Reviewed community.js | Fully DB-driven — no hardcoded data; page is empty only because no approved submissions exist yet |
+| Scoped donation capture | Original plan had no donation capture spec — confirmed gap, decided to build it |
+| Created donation-capture.md architecture spec | Phase 1 (self-reported), Phase 2 (recognition wall), Phase 3 (processor verification) documented |
+| Ran Phase 1 DB migration | Added 9 columns to public.donations; added donation_id + submission_id + wall_message to public.recognition_wall; RLS policies applied |
+| Deployed send-donation-receipt Edge Function | Matches send-rejection-email pattern; Gmail SMTP via denomailer; stamps receipt_sent_at on send |
+| Created public.documentation_catalog table | Searchable by doc_type, category, tags[], status; seeded with all 14 known docs; RLS applied |
+| Updated project-reference.md | Added donations, recognition_wall, documentation_catalog tables; added send-donation-receipt function; updated open items |
 
 ---
 
-## 🟡 Deferred — Needs Decision Next Session
+## 🟡 Deferred — Needs Decision
+
+### Phase 2 Open Questions (from donation-capture.md)
+Before building the recognition wall, answer these in `docs/architecture/donation-capture.md`:
+- Should donation amounts be visible on the public wall (opt-in by donor)?
+- Should communities receive a "new donation" notification email?
+- Should there be a minimum donation amount to prevent spam?
+- Per-community recognition wall or single global wall?
 
 ### Supabase Anon Key in supabase.js
-
-**Current state:** `assets/js/supabase.js` contains the Supabase publishable key hardcoded.
-
-**Why this was flagged:** An earlier open item said to move it to a Cloudflare environment variable.
-
-**Why we paused:** This key is a *publishable* client-side key — it is intentionally visible in browser code and is not a secret. Cloudflare Pages serves static files with no server-side runtime, so environment variables cannot be injected into JavaScript at runtime. Moving it would break the site.
-
-**Decision needed:** Confirm understanding and close this open item as-is, OR explore a build step (e.g. a bundler like Vite) that *could* inject env variables at build time if desired. The current setup is safe. This is a clarity question, not an urgent security issue.
-
-**Reference:** `assets/js/supabase.js`, `docs/project-reference.md` open items
+Publishable key — intentionally client-side. Not a security risk. Deferred indefinitely unless a build step (e.g. Vite) is adopted.
 
 ---
 
 ## 🟠 Open Items Carried Forward
 
-- [ ] **Clarify anon key decision** — see above
-- [ ] **Link community.css in community.html** — stylesheet exists but is not referenced in the HTML head
-- [ ] **Test send-rejection-email Edge Function** — Resend secrets are in place, live test not yet run
-- [ ] **Add admin_actions audit log view in Supabase** — table exists, view not yet created
-- [ ] **Verify admin UI loads submissions correctly** — logged in successfully but pending submissions list not yet confirmed against live data
+- [ ] **Link community.css in community.html** — stylesheet exists, not referenced in HTML head
+- [ ] **Build "I Donated" modal** — Phase 1 frontend; form → supabase insert → call send-donation-receipt
+- [ ] **Test send-donation-receipt** — no live test run yet
+- [ ] **Test send-rejection-email** — still untested with live data
+- [ ] **Add admin_actions audit log view in Supabase** — table exists, view not created
+- [ ] **Verify admin UI loads submissions correctly** — pending submissions list not confirmed against live data
+- [ ] **Answer Phase 2 open questions** — required before building recognition wall
 
 ---
 
@@ -51,18 +49,19 @@
 
 | Issue | Status |
 |---|---|
-| Supabase project is shared with alexandria-training-portal | Both redirect URLs added to allowlist — monitored but not a blocker |
-| Legacy anon JWT key exists in Supabase alongside publishable key | Unused in this project, not a risk, can be reviewed later |
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+| Only 1 pending submission in DB — no approved submissions | community.html renders correctly but appears empty |
 
 ---
 
 ## 📍 Where to Resume
 
-1. Open this file and review deferred items above
-2. Start with the **community.css link** — it is the smallest item and closes a visible gap
-3. Then run the **rejection email test** using the dev test panel at `/admin.html?dev=true`
-4. Then address the **audit log view**
-5. Revisit the anon key question last — it requires the most explanation and is not blocking anything
+1. **Link community.css** — smallest gap, closes a visible styling issue
+2. **Build "I Donated" modal** — Phase 1 frontend to complete the donation capture loop
+3. **Test both edge functions** — rejection email and donation receipt
+4. **Answer Phase 2 open questions** — then build recognition wall
+5. **Admin audit log view** — minor but completes the admin panel
 
 ---
 
@@ -70,7 +69,6 @@
 
 | File | What Changed |
 |---|---|
-| docs/project-reference.md | Live URLs filled in, open items updated, Cloudflare section completed |
-| docs/tutorial/05-admin-and-notifications.md | Added admin user setup section, shared Supabase project warning, SQL password reset script and explanation |
-| docs/tutorial/06-adjusting-fire.md | Added Cloudflare UX gotcha section, Help Your Future You tip on wrong flows, Concept Check Q5 |
-| docs/session-handoff.md | This file (new) |
+| docs/architecture/donation-capture.md | New file — full Phase 1–3 donation capture spec |
+| docs/project-reference.md | Added 3 new tables, new edge function, documentation catalog section, updated open items |
+| docs/session-handoff.md | This file — full session summary |
