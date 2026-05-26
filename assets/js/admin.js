@@ -11,6 +11,8 @@
 import Auth from './auth.js';
 import supabase from './supabase.js';
 
+const EDGE_BASE = 'https://hhyhulqngdkwsxhymmcd.supabase.co/functions/v1';
+
 // ─── Auth Gate ────────────────────────────────────────────────────────────────
 const authGate  = document.getElementById('auth-gate');
 const adminUI   = document.getElementById('admin-ui');
@@ -107,6 +109,7 @@ async function approveSubmission(id) {
 }
 
 async function rejectSubmission(id, reasonIds, notes) {
+  // 1. Update the submission status in the DB
   const { error } = await supabase
     .from('submissions')
     .update({
@@ -117,7 +120,33 @@ async function rejectSubmission(id, reasonIds, notes) {
     })
     .eq('id', id);
   if (error) { showToast('Rejection failed: ' + error.message, 'error'); return; }
-  showToast('Submission rejected. Notification queued.', 'success');
+
+  // 2. Call the Edge Function to send the notification email
+  try {
+    const session = Auth.getSession ? Auth.getSession() : null;
+    const token   = session?.access_token ?? '';
+    const res = await fetch(`${EDGE_BASE}/send-rejection-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ submission_id: id }),
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      console.warn('[admin] rejection email failed:', result);
+      showToast('Submission rejected, but email notification failed. Check logs.', 'error');
+    } else if (result.sent === false) {
+      showToast('Submission rejected. Email not sent (no API key configured).', 'success');
+    } else {
+      showToast('Submission rejected. Notification email sent.', 'success');
+    }
+  } catch (emailErr) {
+    console.error('[admin] rejection email error:', emailErr);
+    showToast('Submission rejected, but email notification failed.', 'error');
+  }
+
   await loadSubmissions();
   renderPendingSubmissions();
 }
