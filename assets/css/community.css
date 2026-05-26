@@ -1,0 +1,90 @@
+/* community.css — Public community page card styles */
+
+.community-card {
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--space-8, 2rem);
+  margin-bottom: var(--space-8, 2rem);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
+}
+
+.community-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4, 1rem);
+  margin-bottom: var(--space-6, 1.5rem);
+  padding-bottom: var(--space-6, 1.5rem);
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+}
+
+.community-card__header h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+}
+
+.community-card__meta {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #64748b);
+  margin: 0;
+}
+
+.community-card__section {
+  margin-bottom: var(--space-8, 2rem);
+}
+
+.community-card__section h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted, #64748b);
+  margin: 0 0 var(--space-4, 1rem);
+}
+
+.community-card__fields {
+  display: grid;
+  gap: var(--space-4, 1rem);
+}
+
+.community-field__label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted, #64748b);
+  margin-bottom: 0.25rem;
+}
+
+.community-field__value {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.donation-methods {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4, 1rem);
+}
+
+.donation-method-card {
+  background: var(--color-surface-alt, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-4, 1rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.donation-method-card p {
+  margin: 0 0 0.25rem;
+  font-size: 0.9rem;
+}
+
+.btn--small {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+}

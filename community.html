@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
+
   <header class="site-header">
     <div class="container">
       <h1>Community Ledger</h1>
@@ -17,19 +18,31 @@
       </nav>
     </div>
   </header>
+
   <main class="container">
+
     <section class="page-intro">
       <h2>Community Pages</h2>
-      <p style="color:#64748b; margin-top:0.5rem;">Approved communities are listed here. Each page is generated from a verified submission.</p>
+      <p class="section-desc">Each community listed here has submitted and had their information verified by our review team. Their financial picture, budget needs, and donation options are displayed exactly as submitted.</p>
     </section>
-    <div id="community-list" style="margin-top:2rem;">
+
+    <!-- Loading / empty states -->
+    <div id="community-loading" style="margin-top:2rem;color:#64748b;">Loading communities…</div>
+    <div id="community-empty"   style="display:none;margin-top:2rem;">
       <p style="color:#94a3b8;">No approved communities yet. <a href="index.html">Be the first to submit.</a></p>
     </div>
+
+    <!-- Community cards injected here -->
+    <div id="community-list" style="margin-top:2rem;"></div>
+
   </main>
+
   <footer class="site-footer">
     <div class="container">
       <p>&copy; 2026 Community Ledger. All submissions reviewed before publication.</p>
     </div>
   </footer>
+
+  <script src="assets/js/community.js" type="module"></script>
 </body>
 </html>
