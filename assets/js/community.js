@@ -18,6 +18,7 @@ let intentFormEl    = null;
 let intentConfirmEl = null;
 let activeSubmissionId = null;
 let activeMethod = null;
+let activePaymentHtml = null;   // payment button HTML to inject on confirmation
 let communityLookup = new Map();
 
 initIntentModal();
@@ -110,14 +111,13 @@ function buildTable(rows) {
 }
 
 // ─── Donation List Renderer ───────────────────────────────────────────────────
-// Priority: PayPal > Stripe (if no PayPal) > Postal > Crypto
-// Each card always shows "I Intend to Donate" button.
+// Each method card shows ONE button only: "I Intend to Donate".
+// The payment button surfaces on the confirmation screen AFTER intent is logged.
 function buildDonationList(submissionId, rows) {
   const cols = Object.keys(rows[0]).filter(h => !['id', 'submission_id', 'sort_order'].includes(h));
 
   if (cols.length > 4) return buildTable(rows);
 
-  // Detect method type from row data
   const classify = (row) => {
     const vals = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
     if (vals.includes('paypal')) return 'paypal';
@@ -131,34 +131,41 @@ function buildDonationList(submissionId, rows) {
   const hasPaypal  = classified.some(r => r.type === 'paypal');
 
   return `<div class="donation-methods">${classified.map(({ row, type }) => {
-    const pairs     = cols.map(c => ({ key: c, label: c.replace(/_/g, ' '), value: row[c] })).filter(p => p.value);
-    const linkPair  = pairs.find(p => p.label.toLowerCase().includes('link') || p.label.toLowerCase().includes('url'));
-    const otherPairs = pairs.filter(p => p !== linkPair);
+    const pairs       = cols.map(c => ({ key: c, label: c.replace(/_/g, ' '), value: row[c] })).filter(p => p.value);
+    const linkPair    = pairs.find(p => p.label.toLowerCase().includes('link') || p.label.toLowerCase().includes('url'));
+    const otherPairs  = pairs.filter(p => p !== linkPair);
     const methodLabel = getMethodLabel(row, pairs);
 
-    let actionButtons = '';
-
+    // Build the payment button HTML that will appear on the confirmation screen
+    let paymentButtonHtml = '';
     if (type === 'paypal') {
       const href = linkPair ? esc(String(linkPair.value)) : '#';
-      actionButtons = `<a href="${href}" target="_blank" rel="noopener noreferrer" class="btn btn--paypal btn--small">Donate via PayPal</a>`;
+      paymentButtonHtml = `<a href="${href}" target="_blank" rel="noopener noreferrer" class="btn btn--paypal">Donate via PayPal</a>`;
     } else if (type === 'stripe' && !hasPaypal) {
       const href = linkPair ? esc(String(linkPair.value)) : '#';
-      actionButtons = `<a href="${href}" target="_blank" rel="noopener noreferrer" class="btn btn--stripe btn--small">Donate via Stripe</a>`;
-    } else if (type === 'postal' || type === 'crypto') {
-      const params = new URLSearchParams({ submission_id: submissionId, method: type });
-      actionButtons = `<a href="donate-instructions.html?${params}" class="btn btn--instructions btn--small">How to ${type === 'postal' ? 'Mail a Donation' : 'Send Crypto'}</a>`;
+      paymentButtonHtml = `<a href="${href}" target="_blank" rel="noopener noreferrer" class="btn btn--stripe">Donate via Stripe</a>`;
+    } else if (type === 'postal') {
+      const params = new URLSearchParams({ submission_id: submissionId, method: 'postal' });
+      paymentButtonHtml = `<a href="donate-instructions.html?${params}" class="btn btn--instructions">How to Mail a Donation</a>`;
+    } else if (type === 'crypto') {
+      const params = new URLSearchParams({ submission_id: submissionId, method: 'crypto' });
+      paymentButtonHtml = `<a href="donate-instructions.html?${params}" class="btn btn--instructions">How to Send Crypto</a>`;
     } else if (linkPair) {
-      actionButtons = `<a href="${esc(String(linkPair.value))}" target="_blank" rel="noopener noreferrer" class="btn btn--primary btn--small">Donate</a>`;
+      paymentButtonHtml = `<a href="${esc(String(linkPair.value))}" target="_blank" rel="noopener noreferrer" class="btn btn--primary">Donate</a>`;
     }
+
+    // Encode the payment button HTML as a data attribute so we can inject it on confirm
+    const encodedPayment = encodeURIComponent(paymentButtonHtml);
 
     return `
       <div class="donation-method-card">
         ${otherPairs.map(p => `<p><span class="community-field__label">${esc(p.label)}</span> ${esc(String(p.value))}</p>`).join('')}
         <div class="donation-method-card__actions">
-          ${actionButtons}
-          <button type="button" class="btn btn--intent btn--small js-intent" data-submission-id="${esc(submissionId)}" data-method="${esc(methodLabel)}">I Intend to Donate</button>
+          <button type="button" class="btn btn--intent btn--small js-intent"
+            data-submission-id="${esc(submissionId)}"
+            data-method="${esc(methodLabel)}"
+            data-payment="${encodedPayment}">I Intend to Donate</button>
         </div>
-        ${(type === 'paypal' || (type === 'stripe' && !hasPaypal)) ? `<p class="donation-note">Clicking the donate button takes you to the payment site. No donation is made until you complete the process there. You may also log your intent now and donate when you\'re ready.</p>` : ''}
       </div>`;
   }).join('')}</div>`;
 }
@@ -173,10 +180,11 @@ function initIntentModal() {
         <button type="button" class="donation-modal__close" aria-label="Close" data-close-intent-modal>&times;</button>
         <div class="donation-modal__content">
 
+          <!-- Step 1: Form -->
           <div id="intent-form-view">
             <h3 id="intent-modal-title">I Intend to Donate</h3>
             <p class="section-desc" id="intent-modal-community"></p>
-            <p class="donation-note" style="margin-bottom:1rem;">Logging your intent does not complete a donation. It helps this community understand how much support is on the way. Donate at your convenience using the payment button.</p>
+            <p class="donation-note" style="margin-bottom:1rem;">Logging your intent does not complete a donation. It helps this community understand how much support is on the way. You can donate right after logging your intent.</p>
             <div id="intent-error" class="donation-message donation-message--error" hidden></div>
             <form id="intent-form" class="donation-form">
               <label>
@@ -203,11 +211,13 @@ function initIntentModal() {
             </form>
           </div>
 
+          <!-- Step 2: Confirmation + payment button -->
           <div id="intent-confirm-view" class="donation-confirm" hidden>
             <div class="donation-confirm__icon" aria-hidden="true">&#10003;</div>
             <h3 class="donation-confirm__title">Intent Logged!</h3>
             <p id="intent-confirm-message" class="donation-confirm__message"></p>
-            <p class="donation-confirm__closing">This window will close automatically.</p>
+            <div id="intent-confirm-payment" class="donation-confirm__payment"></div>
+            <p class="donation-confirm__closing">You can donate now or close this window and donate when you&rsquo;re ready.</p>
           </div>
 
         </div>
@@ -236,13 +246,18 @@ function initIntentModal() {
 
 function bindIntentButtons() {
   document.querySelectorAll('.js-intent').forEach(btn => {
-    btn.addEventListener('click', () => openIntentModal(btn.dataset.submissionId, btn.dataset.method));
+    btn.addEventListener('click', () => openIntentModal(
+      btn.dataset.submissionId,
+      btn.dataset.method,
+      btn.dataset.payment
+    ));
   });
 }
 
-function openIntentModal(submissionId, method) {
+function openIntentModal(submissionId, method, paymentEncoded) {
   activeSubmissionId = submissionId;
-  activeMethod = method || '';
+  activeMethod       = method || '';
+  activePaymentHtml  = paymentEncoded ? decodeURIComponent(paymentEncoded) : '';
 
   const community = communityLookup.get(submissionId);
   const communityLabel = community ? community.community_name : 'this community';
@@ -263,7 +278,8 @@ function closeIntentModal() {
   intentModalEl.hidden = true;
   document.body.classList.remove('modal-open');
   activeSubmissionId = null;
-  activeMethod = null;
+  activeMethod       = null;
+  activePaymentHtml  = null;
 }
 
 async function handleIntentSubmit(event) {
@@ -276,10 +292,10 @@ async function handleIntentSubmit(event) {
   submitBtn.textContent = 'Logging...';
   errorEl.hidden = true;
 
-  const donorName    = intentFormEl.donor_name.value.trim();
-  const donorEmail   = intentFormEl.donor_email.value.trim();
-  const amount       = Number(intentFormEl.amount.value);
-  const wallMessage  = intentFormEl.wall_message.value.trim();
+  const donorName     = intentFormEl.donor_name.value.trim();
+  const donorEmail    = intentFormEl.donor_email.value.trim();
+  const amount        = Number(intentFormEl.amount.value);
+  const wallMessage   = intentFormEl.wall_message.value.trim();
   const displayOnWall = intentFormEl.display_on_wall.checked;
 
   try {
@@ -298,12 +314,17 @@ async function handleIntentSubmit(event) {
 
     if (error) throw error;
 
-    document.getElementById('intent-form-view').hidden = true;
+    // Populate confirmation screen
     document.getElementById('intent-confirm-message').textContent = donorEmail
-      ? `Your intent has been logged. We\'ll keep you updated at ${donorEmail}.`
+      ? `Your intent has been logged. We'll keep you updated at ${donorEmail}.`
       : 'Your intent has been logged. Thank you for your support.';
+
+    // Inject the payment button if one exists for this method
+    const paymentEl = document.getElementById('intent-confirm-payment');
+    paymentEl.innerHTML = activePaymentHtml || '';
+
+    document.getElementById('intent-form-view').hidden = true;
     intentConfirmEl.hidden = false;
-    setTimeout(() => closeIntentModal(), 4000);
 
   } catch (err) {
     console.error('[community] intent submit error:', err);
