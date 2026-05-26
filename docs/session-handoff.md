@@ -4,6 +4,24 @@
 
 ---
 
+## 🚀 Session Start Protocol
+
+At the beginning of every new thread or work session for this project:
+
+1. **Open the `documentation_catalog`** — query `andredavisme's Project` (`hhyhulqngdkwsxhymmcd`) in Supabase:
+   ```sql
+   SELECT title, doc_type, category, url, status
+   FROM public.documentation_catalog
+   ORDER BY doc_type, title;
+   ```
+2. **Read this Session Handoff** — confirm current status, open items, and where to resume
+3. **Read `docs/project-reference.md`** — confirm live URLs, table names, edge functions, and credentials locations
+4. **Then begin work** — don't assume state from memory; verify from the catalog first
+
+> This protocol ensures every session starts from a verified, documented state — not an assumed one.
+
+---
+
 ## ✅ Completed This Session
 
 | Item | Notes |
@@ -16,6 +34,7 @@
 | Deployed send-donation-receipt Edge Function | Matches send-rejection-email pattern; Gmail SMTP via denomailer; stamps receipt_sent_at on send |
 | Created public.documentation_catalog table | Searchable by doc_type, category, tags[], status; seeded with all 14 known docs; RLS applied |
 | Updated project-reference.md | Added donations, recognition_wall, documentation_catalog tables; added send-donation-receipt function; updated open items |
+| Added Session Start Protocol | New section at top of this handoff — catalog-first habit formalized for all future sessions |
 
 ---
 
@@ -71,4 +90,4 @@ Publishable key — intentionally client-side. Not a security risk. Deferred ind
 |---|---|
 | docs/architecture/donation-capture.md | New file — full Phase 1–3 donation capture spec |
 | docs/project-reference.md | Added 3 new tables, new edge function, documentation catalog section, updated open items |
-| docs/session-handoff.md | This file — full session summary |
+| docs/session-handoff.md | This file — full session summary + Session Start Protocol added |
