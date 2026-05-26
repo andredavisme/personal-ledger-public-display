@@ -49,9 +49,33 @@ The code did not change. The data did not change. Only the delivery address chan
 
 ---
 
+## A Note on Product Design — Even From Big Companies
+
+Setting up Cloudflare Pages revealed something worth naming directly.
+
+When you click "Start building" in the Cloudflare dashboard, it drops you into a **Create a Worker** setup flow — a serverless function builder that has nothing to do with hosting a static website. The Pages option, which is what you actually need, is a small, easy-to-miss link buried at the bottom of a screen dominated by irrelevant fields.
+
+Cloudflare is one of the largest internet infrastructure companies in the world. They process trillions of requests per day. They have the resources to design a clear, welcoming onboarding experience for new users.
+
+They chose not to.
+
+This is not unusual. A company's size and revenue have no guaranteed relationship to the quality of its user experience. Some of the most confusing, poorly labeled, and frustrating interfaces on the internet belong to the most profitable companies in the world. Assuming that a big brand means a good experience will cost you time — repeatedly.
+
+**What this means for you as a builder:**
+
+- When a tool's interface is confusing, that is the tool's failure, not yours
+- Read slowly. Look for small links. Check whether you are in the right section before filling out fields
+- If a setup screen asks for things that seem unnecessary (API tokens, deploy commands, wrangler configurations), stop — you are probably in the wrong flow
+- Document gotchas like this for anyone who follows you. A one-sentence warning in your tutorial saves the next person twenty minutes of confusion
+
+> ### 💡 Help Your Future You — Wrong Flow Looks Like Right Flow
+> Many platforms have multiple products that share the same dashboard. "Workers" and "Pages" are both Cloudflare products, both under "Workers & Pages," but they do completely different things. Before filling out any setup form, read the page title and the first paragraph of description. If it mentions things you don't recognize, you may be in the wrong product. Back out and look for a tab, toggle, or secondary link that names what you actually want.
+
+---
+
 ## Why This Is a Lesson, Not a Failure
 
-It would be easy to frame this as a mistake — *we chose the wrong tool*. That framing is not useful and not accurate.
+It would be easy to frame the Netlify situation as a mistake — *we chose the wrong tool*. That framing is not useful and not accurate.
 
 Netlify was a reasonable starting point. It is free, well-documented, and widely used. We could not have known a single evening of testing would hit the bandwidth ceiling before it happened. What mattered was what came next:
 
@@ -96,3 +120,5 @@ When that happens:
 **3.** Think about a time in your own life when a plan did not survive contact with reality. What did you observe? What did you change? What did you keep? How is that similar to what happened here?
 
 **4.** The decision to switch hosting platforms was made quickly and without distress. What habits or practices described in this tutorial made that possible?
+
+**5.** The Cloudflare dashboard buried the Pages option beneath a prominent Worker setup flow. You were not doing anything wrong — the interface was misleading. Can you think of another tool, service, or institution in your life where the design made you feel like *you* were the problem when the design was the problem? What would a better experience have looked like?
