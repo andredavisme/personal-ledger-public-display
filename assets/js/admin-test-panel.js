@@ -2,16 +2,17 @@
  * admin-test-panel.js
  * Activated only when ?dev=true is in the URL.
  * Provides buttons to fire Edge Functions without creating a real submission.
+ * Also provides a Test Data Manager to insert/delete a fixture submission.
  */
 
 import Auth from './auth.js';
 import supabase from './supabase.js';
 
-const EDGE_BASE = 'https://hhyhulqngdkwsxhymmcd.supabase.co/functions/v1';
+const EDGE_BASE   = 'https://hhyhulqngdkwsxhymmcd.supabase.co/functions/v1';
+const TEST_UUID   = '00000000-0000-0000-0000-000000000001';
 
 const params = new URLSearchParams(window.location.search);
 if (params.get('dev') === 'true') {
-  // Show the panel once auth resolves
   Auth.onChange(user => {
     if (Auth.isAdmin()) {
       document.getElementById('dev-test-panel').style.display = 'block';
@@ -24,8 +25,8 @@ function getSubmissionId() {
   return document.getElementById('test-submission-id')?.value.trim();
 }
 
-function showOutput(content) {
-  const el = document.getElementById('test-panel-output');
+function showOutput(content, elId = 'test-panel-output') {
+  const el = document.getElementById(elId);
   el.style.display = 'block';
   el.textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
 }
@@ -33,6 +34,18 @@ function showOutput(content) {
 async function getToken() {
   const session = Auth.getSession ? Auth.getSession() : null;
   return session?.access_token ?? '';
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+  return lines.slice(1).map((line, index) => {
+    const values = line.split(',').map(v => v.trim());
+    const row = { sort_order: index };
+    headers.forEach((h, i) => { row[h] = values[i] || ''; });
+    return row;
+  });
 }
 
 // ─── Send Rejection Email ──────────────────────────────────────────────────────
@@ -74,5 +87,79 @@ document.getElementById('test-load-submission-btn')?.addEventListener('click', a
     showOutput(data);
   } catch (e) {
     showOutput(`❌ Error: ${e.message}`);
+  }
+});
+
+// ─── Insert Test Fixture ───────────────────────────────────────────────────────
+document.getElementById('test-insert-fixture-btn')?.addEventListener('click', async () => {
+  showOutput('⏳ Preparing test fixture...', 'fixture-output');
+  try {
+    // Parse fixtures from textareas
+    const core          = JSON.parse(document.getElementById('fixture-core').value);
+    const financialRows = parseCSV(document.getElementById('fixture-financials').value);
+    const budgetRows    = parseCSV(document.getElementById('fixture-budget').value);
+    const donationRows  = parseCSV(document.getElementById('fixture-donations').value);
+
+    // Delete existing test record first (upsert by UUID)
+    await supabase.from('submissions').delete().eq('id', TEST_UUID);
+
+    // Insert core submission
+    const { error: coreErr } = await supabase
+      .from('submissions')
+      .insert({ ...core, id: TEST_UUID });
+    if (coreErr) throw coreErr;
+
+    // Insert child rows
+    const financialInserts = financialRows.map((r, i) => ({
+      submission_id: TEST_UUID, section: r.section, name: r.name,
+      amount: Number(r.amount), notes: r.notes || null, sort_order: i
+    }));
+    const budgetInserts = budgetRows.map((r, i) => ({
+      submission_id: TEST_UUID, status: r.status, item: r.item,
+      estimated_cost: r.estimated_cost ? Number(r.estimated_cost) : null,
+      actual_cost:    r.actual_cost    ? Number(r.actual_cost)    : null,
+      notes: r.notes || null, sort_order: i
+    }));
+    const methodMap = { paypal:'PayPal', stripe:'Stripe', postal:'Postal', pos:'POS', manual:'Manual', cryptocurrency:'Cryptocurrency' };
+    const donationInserts = donationRows
+      .filter(r => r.method && r.handle_or_address)
+      .map((r, i) => ({
+        submission_id: TEST_UUID,
+        method: methodMap[r.method.toLowerCase()] || r.method,
+        handle_or_address: r.handle_or_address,
+        notes: r.notes || null, sort_order: i
+      }));
+
+    const [{ error: fe }, { error: be }, { error: de }] = await Promise.all([
+      supabase.from('submission_financials').insert(financialInserts),
+      supabase.from('submission_budget').insert(budgetInserts),
+      donationInserts.length
+        ? supabase.from('submission_donations').insert(donationInserts)
+        : Promise.resolve({ error: null })
+    ]);
+
+    if (fe) throw fe;
+    if (be) throw be;
+    if (de) throw de;
+
+    // Auto-fill the UUID field for convenience
+    const idField = document.getElementById('test-submission-id');
+    if (idField) idField.value = TEST_UUID;
+
+    showOutput(`✅ Test submission inserted.\nUUID: ${TEST_UUID}\nThe Submission ID field above has been auto-filled.`, 'fixture-output');
+  } catch (e) {
+    showOutput(`❌ Error: ${e.message}\n\n${JSON.stringify(e, null, 2)}`, 'fixture-output');
+  }
+});
+
+// ─── Delete Test Fixture ───────────────────────────────────────────────────────
+document.getElementById('test-delete-fixture-btn')?.addEventListener('click', async () => {
+  showOutput('⏳ Deleting test submission...', 'fixture-output');
+  try {
+    const { error } = await supabase.from('submissions').delete().eq('id', TEST_UUID);
+    if (error) throw error;
+    showOutput(`✅ Test submission ${TEST_UUID} deleted.`, 'fixture-output');
+  } catch (e) {
+    showOutput(`❌ Error: ${e.message}`, 'fixture-output');
   }
 });
