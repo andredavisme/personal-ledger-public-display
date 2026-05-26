@@ -26,6 +26,54 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 26, 2026 — Session 5 (Evening)
+**Status at close:** Both edge functions fully tested end-to-end with live Gmail; SMTP formatting bug fixed in both functions; test data cleared
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Tested `send-donation-receipt` live | `{ ok: true, sent: true }` confirmed; `receipt_sent_at` stamped correctly after SMTP success |
+| Fixed `=20` quoted-printable bug in `send-donation-receipt` | Indented template literal replaced with `array.join('')` — deployed as v3 |
+| Tested `send-rejection-email` live | Both variants tested: no-reasons (000...01) and with reasons + notes (000...02) |
+| Fixed `=20` + `▯€94` bugs in `send-rejection-email` | Same array-join fix; em dash replaced with `&mdash;` HTML entity — deployed as v6 |
+| Cleared all test records | Test donation `000...99` deleted; test submission `000...02` deleted; `000...01` retained |
+
+#### 🟡 Deferred — Needs Decision (carried from Session 2)
+- **Phase 2 recognition wall questions** (see `docs/architecture/donation-capture.md`):
+  - Should donation amounts be visible on the public wall (opt-in by donor)?
+  - Should communities receive a "new donation" notification email?
+  - Should there be a minimum donation amount to prevent spam?
+  - Per-community recognition wall or single global wall?
+- **Supabase anon key in supabase.js** — publishable, client-side, not a risk; deferred unless Vite build step adopted
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Add admin_actions audit log view in Supabase** — table exists, view not created
+- [ ] **Verify admin UI loads submissions correctly** — pending submissions list not confirmed against live data
+- [ ] **Answer Phase 2 open questions** — required before building recognition wall
+- [ ] **Admin receipt retry UI** — trigger `send-donation-receipt` manually for NULL `receipt_sent_at` records
+- [ ] **Recognition wall display page** — Phase 2; pending open question decisions
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+| Only 1 test submission in DB — no real approved submissions yet | community.html renders correctly but appears empty to real visitors |
+
+#### 📍 Where to Resume
+1. **Answer Phase 2 open questions** — then build recognition wall
+2. **Admin audit log view** — `admin_actions` table exists, create the view
+3. **Admin receipt retry UI** — surface NULL `receipt_sent_at` records for manual re-trigger
+4. **Verify admin UI loads submissions correctly** — confirm pending list against live data
+
+#### 📚 Edge Functions Updated
+| Function | Version | What Changed |
+|---|---|---|
+| `send-donation-receipt` | v3 | Replaced indented template literal with array join to fix `=20` SMTP encoding artifact |
+| `send-rejection-email` | v6 | Same array-join fix; replaced em dash with `&mdash;` to fix `▯€94` encoding artifact |
+
+---
+
 ### 🕒 May 26, 2026 — Session 4 (Afternoon)
 **Status at close:** Active development — "I Intend to Donate" flow fully built and tested end-to-end; PayPal donation button connected; Edge Function receipt bug fixed; test data cleared
 
