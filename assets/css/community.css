@@ -1,5 +1,8 @@
 /* community.css — Public community page card styles */
 
+/* Guarantee [hidden] always overrides display:flex/grid on any child element */
+[hidden] { display: none !important; }
+
 .community-card {
   background: var(--color-surface, #ffffff);
   border: 1px solid var(--color-border, #e2e8f0);
