@@ -99,6 +99,8 @@
   font-size: 0.85rem;
 }
 
+/* ─── Modal ──────────────────────────────────────────────────────────────── */
+
 .modal-open {
   overflow: hidden;
 }
@@ -142,6 +144,8 @@
   cursor: pointer;
   color: var(--color-text-muted, #64748b);
 }
+
+/* ─── Donation Form ──────────────────────────────────────────────────────── */
 
 .donation-form {
   display: grid;
@@ -197,14 +201,55 @@
   font-size: 0.95rem;
 }
 
-.donation-message--success {
-  background: #ecfdf5;
-  color: #166534;
-  border: 1px solid #bbf7d0;
-}
-
 .donation-message--error {
   background: #fef2f2;
   color: #991b1b;
   border: 1px solid #fecaca;
+}
+
+/* ─── Success Confirmation View ──────────────────────────────────────────── */
+
+.donation-confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 2rem;
+  gap: 1rem;
+}
+
+.donation-confirm__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 2.25rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.donation-confirm__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+  color: #166534;
+}
+
+.donation-confirm__message {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--color-text, #1e293b);
+  margin: 0;
+  max-width: 420px;
+}
+
+.donation-confirm__closing {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #64748b);
+  margin: 0;
 }

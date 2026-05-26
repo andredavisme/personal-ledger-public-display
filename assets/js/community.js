@@ -16,7 +16,7 @@ const emptyEl   = document.getElementById('community-empty');
 
 let donationModalEl = null;
 let donationFormEl = null;
-let donationMessageEl = null;
+let donationConfirmEl = null;
 let activeSubmissionId = null;
 let activeMethod = null;
 let communityLookup = new Map();
@@ -189,41 +189,54 @@ function initDonationModal() {
       <div class="donation-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="donation-modal-title">
         <button type="button" class="donation-modal__close" aria-label="Close donation form" data-close-donation-modal>&times;</button>
         <div class="donation-modal__content">
-          <h3 id="donation-modal-title">Report Your Donation</h3>
-          <p class="section-desc" id="donation-modal-community"></p>
-          <div id="donation-message" class="donation-message" hidden></div>
-          <form id="donation-form" class="donation-form">
-            <label>
-              <span>Donor Name (optional)</span>
-              <input type="text" name="donor_name" maxlength="120" />
-            </label>
-            <label>
-              <span>Donor Email (optional, for receipt)</span>
-              <input type="email" name="donor_email" maxlength="160" />
-            </label>
-            <label>
-              <span>Amount (USD)</span>
-              <input type="number" name="amount" min="0.01" step="0.01" required />
-            </label>
-            <label>
-              <span>Method</span>
-              <input type="text" name="method" required />
-            </label>
-            <label>
-              <span>Transaction Reference (optional)</span>
-              <input type="text" name="transaction_reference" maxlength="160" />
-            </label>
-            <label class="donation-form__checkbox">
-              <input type="checkbox" name="display_on_wall" />
-              <span>Display on recognition wall</span>
-            </label>
-            <label>
-              <span>Message to Community (optional)</span>
-              <textarea name="wall_message" rows="4" maxlength="500"></textarea>
-            </label>
-            <p class="donation-form__disclaimer">This is a self-reported record of your donation. It is not a tax receipt. Please retain your payment confirmation from your payment provider for tax purposes.</p>
-            <button type="submit" class="btn btn--primary">Submit Donation</button>
-          </form>
+
+          <!-- Form view -->
+          <div id="donation-form-view">
+            <h3 id="donation-modal-title">Report Your Donation</h3>
+            <p class="section-desc" id="donation-modal-community"></p>
+            <div id="donation-error" class="donation-message donation-message--error" hidden></div>
+            <form id="donation-form" class="donation-form">
+              <label>
+                <span>Donor Name (optional)</span>
+                <input type="text" name="donor_name" maxlength="120" />
+              </label>
+              <label>
+                <span>Donor Email (optional, for receipt)</span>
+                <input type="email" name="donor_email" maxlength="160" />
+              </label>
+              <label>
+                <span>Amount (USD)</span>
+                <input type="number" name="amount" min="0.01" step="0.01" required />
+              </label>
+              <label>
+                <span>Method</span>
+                <input type="text" name="method" required />
+              </label>
+              <label>
+                <span>Transaction Reference (optional)</span>
+                <input type="text" name="transaction_reference" maxlength="160" />
+              </label>
+              <label class="donation-form__checkbox">
+                <input type="checkbox" name="display_on_wall" />
+                <span>Display on recognition wall</span>
+              </label>
+              <label>
+                <span>Message to Community (optional)</span>
+                <textarea name="wall_message" rows="4" maxlength="500"></textarea>
+              </label>
+              <p class="donation-form__disclaimer">This is a self-reported record of your donation. It is not a tax receipt. Please retain your payment confirmation from your payment provider for tax purposes.</p>
+              <button type="submit" class="btn btn--primary">Submit Donation</button>
+            </form>
+          </div>
+
+          <!-- Success view (hidden until submit succeeds) -->
+          <div id="donation-confirm-view" class="donation-confirm" hidden>
+            <div class="donation-confirm__icon" aria-hidden="true">&#10003;</div>
+            <h3 class="donation-confirm__title">Thank You!</h3>
+            <p id="donation-confirm-message" class="donation-confirm__message"></p>
+            <p class="donation-confirm__closing">This window will close automatically.</p>
+          </div>
+
         </div>
       </div>
     </div>
@@ -231,9 +244,9 @@ function initDonationModal() {
 
   document.body.appendChild(wrapper.firstElementChild);
 
-  donationModalEl = document.getElementById('donation-modal');
-  donationFormEl = document.getElementById('donation-form');
-  donationMessageEl = document.getElementById('donation-message');
+  donationModalEl   = document.getElementById('donation-modal');
+  donationFormEl    = document.getElementById('donation-form');
+  donationConfirmEl = document.getElementById('donation-confirm-view');
 
   donationModalEl.addEventListener('click', (event) => {
     if (event.target.matches('[data-close-donation-modal]')) closeDonationModal();
@@ -262,10 +275,14 @@ function openDonationModal(submissionId, method) {
 
   donationFormEl.reset();
   donationFormEl.method.value = activeMethod;
-  donationFormEl.display_on_wall.checked = Boolean(donationFormEl.donor_name.value.trim());
-  donationMessageEl.hidden = true;
-  donationMessageEl.textContent = '';
-  donationMessageEl.className = 'donation-message';
+  donationFormEl.display_on_wall.checked = false;
+
+  const errorEl = document.getElementById('donation-error');
+  errorEl.hidden = true;
+  errorEl.textContent = '';
+
+  document.getElementById('donation-form-view').hidden = false;
+  donationConfirmEl.hidden = true;
   document.getElementById('donation-modal-community').textContent = `You are reporting a donation to ${communityLabel}.`;
 
   donationModalEl.hidden = false;
@@ -282,11 +299,7 @@ function closeDonationModal() {
 
 function syncWallConsentDefault() {
   if (!donationFormEl) return;
-  if (!donationFormEl.donor_name.value.trim()) {
-    donationFormEl.display_on_wall.checked = false;
-    return;
-  }
-  donationFormEl.display_on_wall.checked = true;
+  donationFormEl.display_on_wall.checked = Boolean(donationFormEl.donor_name.value.trim());
 }
 
 async function handleDonationSubmit(event) {
@@ -295,33 +308,33 @@ async function handleDonationSubmit(event) {
   if (!activeSubmissionId) return;
 
   const submitButton = donationFormEl.querySelector('button[type="submit"]');
+  const errorEl = document.getElementById('donation-error');
   submitButton.disabled = true;
   submitButton.textContent = 'Submitting...';
+  errorEl.hidden = true;
 
-  const donorName = donationFormEl.donor_name.value.trim();
-  const donorEmail = donationFormEl.donor_email.value.trim();
-  const amount = Number(donationFormEl.amount.value);
-  const method = donationFormEl.method.value.trim() || activeMethod;
+  const donorName           = donationFormEl.donor_name.value.trim();
+  const donorEmail          = donationFormEl.donor_email.value.trim();
+  const amount              = Number(donationFormEl.amount.value);
+  const method              = donationFormEl.method.value.trim() || activeMethod;
   const transactionReference = donationFormEl.transaction_reference.value.trim();
-  const displayOnWall = donationFormEl.display_on_wall.checked;
-  const wallMessage = donationFormEl.wall_message.value.trim();
+  const displayOnWall       = donationFormEl.display_on_wall.checked;
+  const wallMessage         = donationFormEl.wall_message.value.trim();
 
   try {
-    const payload = {
-      submission_id: activeSubmissionId,
-      donor_name: donorName || null,
-      donor_email: donorEmail || null,
-      amount,
-      method,
-      transaction_reference: transactionReference || null,
-      status: 'self_reported',
-      display_on_wall: displayOnWall,
-      wall_message: wallMessage || null,
-    };
-
     const { data, error } = await supabase
       .from('donations')
-      .insert(payload)
+      .insert({
+        submission_id:         activeSubmissionId,
+        donor_name:            donorName || null,
+        donor_email:           donorEmail || null,
+        amount,
+        method,
+        transaction_reference: transactionReference || null,
+        status:                'self_reported',
+        display_on_wall:       displayOnWall,
+        wall_message:          wallMessage || null,
+      })
       .select('id')
       .single();
 
@@ -331,23 +344,22 @@ async function handleDonationSubmit(event) {
       const { error: fnError } = await supabase.functions.invoke('send-donation-receipt', {
         body: { donation_id: data.id },
       });
-      if (fnError) {
-        console.error('[community] receipt send error:', fnError);
-      }
+      if (fnError) console.error('[community] receipt send error:', fnError);
     }
 
-    donationMessageEl.textContent = donorEmail
-      ? 'Thank you. Your donation was recorded and your receipt email is on the way.'
-      : 'Thank you. Your donation was recorded.';
-    donationMessageEl.className = 'donation-message donation-message--success';
-    donationMessageEl.hidden = false;
+    // Show full-screen confirmation — hide the form
+    document.getElementById('donation-form-view').hidden = true;
+    document.getElementById('donation-confirm-message').textContent = donorEmail
+      ? `Your donation was recorded. A receipt is on its way to ${donorEmail}.`
+      : 'Your donation has been recorded. Thank you for supporting this community.';
+    donationConfirmEl.hidden = false;
 
-    setTimeout(() => closeDonationModal(), 1600);
-  } catch (error) {
-    console.error('[community] donation submit error:', error);
-    donationMessageEl.textContent = error?.message || 'Unable to record donation right now. Please try again.';
-    donationMessageEl.className = 'donation-message donation-message--error';
-    donationMessageEl.hidden = false;
+    setTimeout(() => closeDonationModal(), 4000);
+
+  } catch (err) {
+    console.error('[community] donation submit error:', err);
+    errorEl.textContent = err?.message || 'Unable to record donation right now. Please try again.';
+    errorEl.hidden = false;
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = 'Submit Donation';
@@ -370,7 +382,7 @@ function esc(str) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\"/g, '&quot;');
+    .replace(/"/g, '&quot;');
 }
 
 function formatDate(iso) {
