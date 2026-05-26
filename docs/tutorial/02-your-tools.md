@@ -1,5 +1,5 @@
 # Section 2 — Your Tools
-## Setting Up GitHub, Netlify, and Supabase
+## Setting Up GitHub, Cloudflare Pages, and Supabase
 
 ---
 
@@ -9,17 +9,20 @@ Before you can build anything, you need three things:
 
 1. **A place to store your code** — This is GitHub. Think of it as a filing cabinet for your project, but one that remembers every version of every file you have ever saved, and lets you go back to any of them.
 
-2. **A place to publish your application** — This is Netlify. Think of it as the address where people can visit your application on the internet. Every time you save a change to your code, Netlify automatically updates the live version.
+2. **A place to publish your application** — This is Cloudflare Pages. Think of it as the address where people can visit your application on the internet. Every time you save a change to your code, Cloudflare automatically updates the live version.
 
 3. **A place to store your data** — This is Supabase. Think of it as a structured, searchable, and secure notebook where all the information submitted through your application gets stored and organized.
 
 All three are free to use at the level this project requires. All three are professional tools used by real companies. You are not learning on training wheels — you are learning on the same tools that developers use.
 
+> **Why Cloudflare Pages instead of Netlify?**
+> This tutorial originally used Netlify for hosting. During development, the free tier bandwidth limit was reached — and the site went offline. Cloudflare Pages has no bandwidth cap on its free tier, making it a more reliable choice for communities that cannot afford unexpected hosting bills. See Section 6 for the full story and the lesson behind it.
+
 ---
 
 ## Step 1 — Create a GitHub Account
 
-GitHub is where your code lives. It is also how Netlify knows when to update your live site — every time you save a change to GitHub, Netlify sees it and redeploys automatically.
+GitHub is where your code lives. It is also how Cloudflare Pages knows when to update your live site — every time you save a change to GitHub, Cloudflare sees it and redeploys automatically.
 
 1. Go to [github.com](https://github.com)
 2. Click **Sign up**
@@ -33,7 +36,7 @@ A **repository** (often called a "repo") is a folder for your project on GitHub.
 
 1. Once logged in, click the **+** icon in the top right → **New repository**
 2. Name it: `community-ledger`
-3. Set it to **Public** (this is required for free Netlify deployment)
+3. Set it to **Public** (this is required for free Cloudflare Pages deployment)
 4. Check **Add a README file**
 5. Click **Create repository**
 
@@ -44,19 +47,22 @@ You now have a place to store your code.
 
 ---
 
-## Step 2 — Create a Netlify Account
+## Step 2 — Create a Cloudflare Pages Account
 
-Netlify is where your application will live on the internet. It watches your GitHub repository and automatically publishes the latest version of your site every time you make a change.
+Cloudflare Pages is where your application will live on the internet. It watches your GitHub repository and automatically publishes the latest version of your site every time you make a change. Unlike some other hosting services, Cloudflare Pages has **no bandwidth limit** on its free tier — meaning your site will not go offline if it gets traffic.
 
-1. Go to [netlify.com](https://www.netlify.com)
-2. Click **Sign up**
-3. Choose **Sign up with GitHub** — this connects the two accounts and makes deployment automatic
-4. Authorize Netlify to access your GitHub account
+1. Go to [pages.cloudflare.com](https://pages.cloudflare.com)
+2. Click **Sign up** and create a free Cloudflare account
+3. Once logged in, go to **Workers & Pages** → **Create** → **Pages**
+4. Click **Connect to Git** and authorize Cloudflare to access your GitHub account
+5. Select your `community-ledger` repository
+6. Leave the build settings as defaults (no build command needed for a static site)
+7. Click **Save and Deploy**
 
-You do not need to deploy anything yet. We will connect your repository to Netlify in a later section.
+Cloudflare will assign your site a URL like `community-ledger.pages.dev`. Write this down.
 
 > ### 💡 Help Your Future You — Note Your Site URL
-> When Netlify creates your site, it will give it a random name like `graceful-koala-3f92.netlify.app`. Write this URL down somewhere — your notes, your project reference document, anywhere you will find it later. You can change this name in Netlify's settings if you want something more memorable.
+> When Cloudflare creates your site, it will give it a URL ending in `.pages.dev`. Write this URL down in your project reference document immediately. You can add a custom domain later from the Cloudflare dashboard if you want a more professional address.
 
 ---
 
@@ -85,7 +91,7 @@ You do not need to do anything inside Supabase yet. We will return to it when we
 | Account | What It Does | Status |
 |---------|-------------|--------|
 | GitHub | Stores your code | ✅ Created |
-| Netlify | Publishes your site | ✅ Created |
+| Cloudflare Pages | Publishes your site | ✅ Created |
 | Supabase | Stores your data | ✅ Created |
 
 These three accounts form the complete infrastructure for your application. Everything you build will live in or flow through one of these three services.
@@ -115,6 +121,6 @@ Security is not a feature you add later. It is a habit you build from the beginn
 
 **2.** GitHub saves every version of every file you have ever changed. Why might that be useful? Can you think of a situation where being able to go back to an older version of something would matter?
 
-**3.** Netlify automatically updates your live site every time you save a change to GitHub. What does that tell you about the relationship between GitHub and Netlify?
+**3.** Cloudflare Pages automatically updates your live site every time you save a change to GitHub. What does that tell you about the relationship between GitHub and Cloudflare Pages?
 
 **4.** You now have accounts with three different services. Each one holds something valuable — your code, your live application, and your community's data. If you had to rank them by how important it is to protect them, what order would you choose and why?

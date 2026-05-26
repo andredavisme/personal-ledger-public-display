@@ -16,7 +16,7 @@ This section explains how both of those work in plain language.
 
 ## Protecting Your Admin Page
 
-The admin page is gated using a tool called **Netlify Identity**. Think of it as a velvet rope at the door. Anyone can walk up, but only people on the guest list get in.
+The admin page is gated using **Supabase Auth**. Think of it as a velvet rope at the door. Anyone can walk up, but only people on the guest list get in.
 
 Here is how it works:
 
@@ -25,10 +25,10 @@ Here is how it works:
 - If they are logged in and on the approved list, the full admin interface appears
 - There is no way to bypass this by typing a URL or clicking around
 
-You manage the approved list in your Netlify dashboard. Invitations are sent by email. The invited person sets their own password. You never see or store their password.
+You manage the approved list in your Supabase dashboard. Invitations are sent by email. The invited person sets their own password. You never see or store their password.
 
 > ### 💡 Help Your Future You — Invite, Don't Share
-> Never share your admin password with a co-admin. Instead, invite them through Netlify Identity so they have their own login. This means if they ever need to be removed, you can revoke their access without changing your own password or affecting anyone else. Each person should have exactly one account, and each account should belong to exactly one person.
+> Never share your admin password with a co-admin. Instead, invite them through Supabase Auth so they have their own login. This means if they ever need to be removed, you can revoke their access without changing your own password or affecting anyone else. Each person should have exactly one account, and each account should belong to exactly one person.
 
 ---
 
@@ -69,7 +69,7 @@ The email is sent through a service called **Resend**. Resend is free for the vo
 This project includes a hidden test panel on the admin page. It is only visible when you add `?dev=true` to the admin URL:
 
 ```
-https://your-site.netlify.app/admin.html?dev=true
+https://your-site.pages.dev/admin.html?dev=true
 ```
 
 The test panel lets you:

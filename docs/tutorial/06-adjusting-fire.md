@@ -1,0 +1,98 @@
+# Section 6 — Adjusting Fire
+## What to Do When Your Plan Meets Reality
+
+---
+
+## A Term Worth Knowing
+
+**Adjusting fire** is a military term. It comes from artillery: you fire a round, observe where it lands, and correct your aim before the next shot. The goal was never to get it perfect the first time. The goal is to *observe, learn, and correct* until you hit your target.
+
+Builders use this skill constantly — not because they planned poorly, but because reality reveals things that planning cannot.
+
+This section is about a real decision made during the development of this very application. It is here because it happened, because it matters, and because you will face a version of it too.
+
+---
+
+## What Happened
+
+This project was originally built using **Netlify** for hosting. Netlify is a well-regarded, widely used platform. It was a reasonable choice.
+
+During a single evening of active development and testing, the site hit Netlify's free tier bandwidth limit. The site went offline. A screen appeared that said:
+
+> *"This site was paused as it reached its usage limits."*
+
+The work was not lost. The code was in GitHub. The data was in Supabase. But the live site was unreachable until the account was upgraded or the billing cycle reset.
+
+For a community that depends on this application to collect submissions and display their financial story to potential donors, an unexpected outage is not just inconvenient — it is a break in trust.
+
+---
+
+## The Decision
+
+Rather than pay for a Netlify upgrade, the project evaluated alternatives. The question was simple:
+
+> *What hosting platform gives us the reliability we need at the price we can afford?*
+
+The answer was **Cloudflare Pages**:
+- Free tier with **no bandwidth cap**
+- Same GitHub auto-deploy workflow
+- Faster global performance due to Cloudflare's network
+- No risk of the site going offline due to traffic or testing
+
+The migration required:
+1. Creating a Cloudflare account
+2. Connecting the same GitHub repository
+3. Updating the auth system (Netlify Identity does not work outside of Netlify)
+4. Updating documentation to reflect the new platform
+
+The code did not change. The data did not change. Only the delivery address changed.
+
+---
+
+## Why This Is a Lesson, Not a Failure
+
+It would be easy to frame this as a mistake — *we chose the wrong tool*. That framing is not useful and not accurate.
+
+Netlify was a reasonable starting point. It is free, well-documented, and widely used. We could not have known a single evening of testing would hit the bandwidth ceiling before it happened. What mattered was what came next:
+
+- We observed the problem clearly (site offline, billing limit reached)
+- We evaluated options without panic
+- We chose a better-fit tool for our specific constraints (no bandwidth cap, free tier, same workflow)
+- We updated the plan and the documentation to reflect what we learned
+- We kept building
+
+That sequence — observe, evaluate, decide, update, continue — is adjusting fire. It is not a detour from the build. It *is* the build.
+
+---
+
+## What This Means for Your Project
+
+At some point in your build, something will not work the way you expected. A service will have a limit you did not anticipate. A tool will behave differently in production than it did in testing. A decision that made sense in week one will need revisiting in week four.
+
+When that happens:
+
+1. **Name the problem clearly.** What exactly stopped working? What was the error or constraint?
+2. **Separate the problem from the work.** Your code, your data, and your mission are still intact. One component needs replacement — not the whole project.
+3. **Evaluate options by your actual constraints.** In this case: free, reliable, no bandwidth risk. Your constraints will be different — know them before you evaluate.
+4. **Make the change and document it.** Update your reference document, your tutorial, your notes. Future you — and future collaborators — deserve to know why the decision was made.
+5. **Keep building.** The adjustment is complete. Move forward.
+
+> ### 💡 Help Your Future You — Document Why, Not Just What
+> Your `docs/project-reference.md` records *what* is in your project. But decisions — especially the ones where you changed direction — deserve a *why*. When you swap a tool, add a one-sentence note: "Migrated from Netlify to Cloudflare Pages on [date] because free tier bandwidth limit was reached during development." A year from now, that sentence will save you from second-guessing a decision you already thought through.
+
+> ### 💡 Help Your Future You — Know Your Constraints Before You Choose Tools
+> Before selecting any service, ask three questions: What happens when I hit the free tier limit? Can I afford the next tier if I need it? Is there a free alternative with better constraints for my situation? Answering these questions before you build is faster than answering them after your site goes offline.
+
+---
+
+## ✅ Concept Check — Section 6
+
+*Write your responses in your own words.*
+
+**1.** In your own words, describe what "adjusting fire" means and why it applies to building software.
+
+**2.** When the hosting limit was reached, the code and data were unaffected. Why does the architecture of this project — three separate services for code, hosting, and data — make it easier to swap one component without losing everything?
+
+**3.** Think about a time in your own life when a plan did not survive contact with reality. What did you observe? What did you change? What did you keep? How is that similar to what happened here?
+
+**4.** The decision to switch hosting platforms was made quickly and without distress. What habits or practices described in this tutorial made that possible?

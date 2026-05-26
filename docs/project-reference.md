@@ -1,13 +1,15 @@
 # Community Ledger — Project Reference
 **Last Updated:** May 25, 2026
 
+> ⚠️ **Hosting Note:** This project migrated from Netlify to Cloudflare Pages on May 25, 2026 after Netlify's free tier bandwidth limit was reached during development. See `docs/tutorial/06-adjusting-fire.md` for the full reasoning and lesson.
+
 ---
 
 ## 🌐 Live URLs
 | Label | URL |
 |---|---|
-| Public Form | https://community-finance.netlify.app |
-| Admin Panel | https://community-finance.netlify.app/admin |
+| Public Form | *(update after Cloudflare Pages deploy)* |
+| Admin Panel | *(update after Cloudflare Pages deploy)*/admin |
 
 ---
 
@@ -18,7 +20,7 @@
 | Repository | personal-ledger-public-display |
 | Repo URL | https://github.com/andredavisme/personal-ledger-public-display |
 | Default Branch | main |
-| Auto-Deploy | Netlify deploys on every push to main |
+| Auto-Deploy | Cloudflare Pages deploys on every push to main |
 
 ---
 
@@ -30,35 +32,39 @@
 | Region | us-west-2 |
 | Database Host | db.hhyhulqngdkwsxhymmcd.supabase.co |
 | Dashboard URL | https://supabase.com/dashboard/project/hhyhulqngdkwsxhymmcd |
-| Schema | ledger |
-| Schema Created | May 25, 2026 |
+| Schema | public |
 
 ### Key Tables
 | Table | Purpose |
 |---|---|
-| ledger.submissions | Core intake records |
-| ledger.submission_financials | Financial statement CSV rows |
-| ledger.submission_budget | Budget CSV rows |
-| ledger.submission_donations | Donation method CSV rows |
-| ledger.correction_reasons | Admin rejection checklist |
-| ledger.admin_actions | Immutable audit log |
+| public.submissions | Core intake records |
+| public.submission_financials | Financial statement CSV rows |
+| public.submission_budget | Budget CSV rows |
+| public.submission_donations | Donation method CSV rows |
+| public.correction_reasons | Admin rejection checklist |
+| public.admin_actions | Immutable audit log |
 
 ### Key Views
 | View | Purpose |
 |---|---|
-| ledger.submissions_with_collision | Adds reference_collision boolean |
-| ledger.admin_actions_log | Admin action history view |
+| public.submissions_with_collision | Adds reference_collision boolean |
+
+### Edge Functions
+| Function | Purpose |
+|---|---|
+| send-rejection-email | Sends formatted rejection email via Resend |
 
 ---
 
-## 🚀 Netlify
+## ☁️ Cloudflare Pages
 | Label | Value |
 |---|---|
-| Site Name | community-finance |
-| Hosting URL | https://community-finance.netlify.app |
-| Auth Method | Netlify Identity (invite-only) |
+| Platform | Cloudflare Pages (free tier) |
+| Hosting URL | *(update after deploy)* |
+| Auth Method | Supabase Auth (migrating from Netlify Identity) |
 | Deploy Trigger | GitHub push to main |
-| Config File | netlify.toml |
+| Bandwidth Cap | None (unlimited on free tier) |
+| Previous Host | Netlify (retired May 25, 2026 — bandwidth limit reached) |
 
 ---
 
@@ -67,37 +73,35 @@
 |---|---|
 | index.html | Public submission form |
 | admin.html | Admin review page (auth-gated) |
-| community.html | Public community pages (stub) |
+| community.html | Public community pages |
 | assets/js/intake.js | Form submission → Supabase insert |
 | assets/js/admin.js | Admin page logic |
-| assets/js/auth.js | Netlify Identity abstraction layer |
+| assets/js/admin-test-panel.js | Dev test panel (?dev=true) |
+| assets/js/auth.js | Auth abstraction layer (swap point for Supabase Auth) |
 | assets/js/supabase.js | Shared Supabase client |
-| netlify.toml | Netlify config, redirects, headers |
+| assets/js/community.js | Public community page renderer |
 
 ---
 
 ## 🔑 Credentials & Keys
 > ⚠️ Rotate keys if ever exposed publicly.
-> Move to Netlify environment variables before production expansion.
+> Store all keys in Supabase Vault or Cloudflare Pages environment variables — never in code.
 
 | Label | Location |
 |---|---|
-| Supabase Anon Key | Hardcoded in admin.js and intake.js (migrate out) |
-| Netlify Identity | Managed via Netlify Dashboard |
+| Supabase Anon Key | assets/js/supabase.js (migrate to env variable) |
+| Resend API Key | Supabase Edge Function Secrets |
+| Email From Address | Supabase Edge Function Secrets (EMAIL_FROM) |
 
 ---
 
 ## 📌 Open Items (as of May 25, 2026)
-- [ ] Fix admin.js Supabase URL → update to project `hhyhulqngdkwsxhymmcd`
-- [ ] Fix admin.js: `created_at` → `submitted_at` in `loadSubmissions()` order clause
-- [ ] Fix admin.js: `s.submitter_name` → `s.full_name` in card renderer
-- [ ] Fix admin.js: remove `'flagged'` from status filter (not in live enum)
-- [ ] Fix admin.js: load CSV data from child tables (`submission_financials`, `submission_budget`, `submission_donations`)
-- [ ] Build out `community.html` with approved submission data
-- [ ] Build `send-rejection-email` Edge Function
+- [ ] Create Cloudflare Pages account and connect GitHub repo
+- [ ] Update live URLs in this document after Cloudflare deploy
 - [ ] Migrate auth from Netlify Identity → Supabase Auth
-- [ ] Move Supabase keys to Netlify environment variables
-- [ ] Confirm `ledger` schema is listed in Supabase Dashboard → Settings → API → Exposed Schemas
+- [ ] Move Supabase anon key to Cloudflare Pages environment variables
+- [ ] Link community.css in community.html
+- [ ] Add admin_actions audit log view to Supabase
 
 ---
 
@@ -111,6 +115,6 @@
 |---|---|
 | `andredavisme` | Your GitHub username |
 | `personal-ledger-public-display` | Your repository name |
-| `community-finance.netlify.app` | Your Netlify site URL |
 | `hhyhulqngdkwsxhymmcd` | Your Supabase project ID |
-| `ledger` | Your Supabase schema name |
+| `public` | Your Supabase schema name |
+| *(Cloudflare URL)* | Your Cloudflare Pages site URL |
