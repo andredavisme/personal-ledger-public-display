@@ -39,6 +39,9 @@ A **repository** (often called a "repo") is a folder for your project on GitHub.
 
 You now have a place to store your code.
 
+> ### 💡 Help Your Future You — Naming Your Repository
+> The name `community-ledger` is just a suggestion. Whatever you choose, pick something you will still recognize six months from now. Avoid names like `project1` or `test-app` — when you have multiple projects, those names tell you nothing. A good name describes what the project *does*, not when you made it.
+
 ---
 
 ## Step 2 — Create a Netlify Account
@@ -51,6 +54,9 @@ Netlify is where your application will live on the internet. It watches your Git
 4. Authorize Netlify to access your GitHub account
 
 You do not need to deploy anything yet. We will connect your repository to Netlify in a later section.
+
+> ### 💡 Help Your Future You — Note Your Site URL
+> When Netlify creates your site, it will give it a random name like `graceful-koala-3f92.netlify.app`. Write this URL down somewhere — your notes, your project reference document, anywhere you will find it later. You can change this name in Netlify's settings if you want something more memorable.
 
 ---
 
@@ -68,6 +74,9 @@ Supabase is where your application's data will be stored. When someone fills out
 8. Click **Create new project** — it takes a minute or two to initialize
 
 You do not need to do anything inside Supabase yet. We will return to it when we build the database section.
+
+> ### 💡 Help Your Future You — Save Your Project ID
+> After your Supabase project initializes, find your **Project ID** in Settings → General. It looks like a random string of letters and numbers. Copy it into your project reference document now. You will need it repeatedly throughout this build, and hunting for it later is an unnecessary interruption.
 
 ---
 
@@ -92,6 +101,9 @@ You now have three accounts that will eventually hold real community data. A few
 - **Enable two-factor authentication** on GitHub at minimum. GitHub holds your code — it is the most important account to protect.
 
 Security is not a feature you add later. It is a habit you build from the beginning.
+
+> ### 💡 Help Your Future You — Keep a Project Reference Document
+> As you build, you will collect URLs, IDs, and account names across multiple services. Start a simple document right now — even a notes app works — and paste each one in as you go. This tutorial includes a template called `docs/project-reference.md` in the repository. Copy it and fill it in as you complete each step. Your future self will thank you the first time you need to find something at 10pm.
 
 ---
 

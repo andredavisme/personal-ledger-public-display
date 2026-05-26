@@ -55,6 +55,9 @@ Now open that file in a web browser. Drag it into a browser window, or right-cli
 
 You have just created a web page.
 
+> ### 💡 Help Your Future You — Write a Commit Message You'll Understand Later
+> When you save a change to GitHub, you write a short message describing what you did. It is tempting to write something like `update` or `fix stuff`. Resist that. Write what you actually changed: `Add welcome heading to index.html` or `Fix typo in community description`. Six weeks from now, when you are trying to remember what changed and when, a clear message is the difference between finding it in seconds and searching for twenty minutes.
+
 ---
 
 ## What Each Part Means
@@ -81,6 +84,9 @@ Now that you have a working HTML file, let's put it in your repository.
 5. Click **Commit changes**
 
 Your file is now in GitHub. In the next section, we will connect GitHub to Netlify so this file becomes a live web page.
+
+> ### 💡 Help Your Future You — Test Before You Push
+> Before uploading any file to GitHub, open it in a browser first. A broken page that is only on your computer is easy to fix quietly. A broken page that is live on the internet — even one that only three people have visited — is a broken page your community could see. Make "open it locally first" a habit from day one.
 
 ---
 
