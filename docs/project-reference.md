@@ -8,8 +8,9 @@
 ## 🌐 Live URLs
 | Label | URL |
 |---|---|
-| Public Form | *(update after Cloudflare Pages deploy)* |
-| Admin Panel | *(update after Cloudflare Pages deploy)*/admin |
+| Public Form | https://personal-ledger-public-display.pages.dev |
+| Admin Panel | https://personal-ledger-public-display.pages.dev/admin.html |
+| Community Pages | https://personal-ledger-public-display.pages.dev/community.html |
 
 ---
 
@@ -60,7 +61,7 @@
 | Label | Value |
 |---|---|
 | Platform | Cloudflare Pages (free tier) |
-| Hosting URL | *(update after deploy)* |
+| Hosting URL | https://personal-ledger-public-display.pages.dev |
 | Auth Method | Supabase Auth (migrating from Netlify Identity) |
 | Deploy Trigger | GitHub push to main |
 | Bandwidth Cap | None (unlimited on free tier) |
@@ -96,8 +97,8 @@
 ---
 
 ## 📌 Open Items (as of May 25, 2026)
-- [ ] Create Cloudflare Pages account and connect GitHub repo
-- [ ] Update live URLs in this document after Cloudflare deploy
+- [x] Create Cloudflare Pages account and connect GitHub repo
+- [x] Update live URLs in this document after Cloudflare deploy
 - [ ] Migrate auth from Netlify Identity → Supabase Auth
 - [ ] Move Supabase anon key to Cloudflare Pages environment variables
 - [ ] Link community.css in community.html
@@ -117,4 +118,4 @@
 | `personal-ledger-public-display` | Your repository name |
 | `hhyhulqngdkwsxhymmcd` | Your Supabase project ID |
 | `public` | Your Supabase schema name |
-| *(Cloudflare URL)* | Your Cloudflare Pages site URL |
+| `personal-ledger-public-display.pages.dev` | Your Cloudflare Pages site URL |
