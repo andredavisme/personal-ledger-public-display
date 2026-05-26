@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Donation Instructions — Community Ledger</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/community.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <h1>Community Ledger</h1>
+      <nav>
+        <a href="index.html">Submit</a>
+        <a href="community.html">Community Pages</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="max-width:680px;">
+    <div id="instructions-loading" style="margin-top:2rem;color:#64748b;">Loading instructions…</div>
+    <div id="instructions-content" hidden>
+
+      <div style="margin: 1.5rem 0 0.5rem;">
+        <a href="community.html" class="back-link">&larr; Back to Community Pages</a>
+      </div>
+
+      <h2 id="instructions-heading" style="margin-bottom:0.25rem;"></h2>
+      <p id="instructions-subheading" class="section-desc" style="margin-bottom:2rem;"></p>
+
+      <div id="instructions-details" class="instructions-details"></div>
+
+      <div class="instructions-consider" id="consider-block">
+        <h3>Ready to confirm?</h3>
+        <p>If you\'ve already sent your donation, click below to record it. This helps the community track support even when it\'s not processed digitally.</p>
+        <button type="button" class="btn btn--primary" id="consider-done-btn">Consider It Done</button>
+      </div>
+
+      <!-- Consider It Done form (hidden until button clicked) -->
+      <div id="consider-form-wrap" class="donation-modal-inline" hidden>
+        <h3>Record Your Donation</h3>
+        <div id="consider-error" class="donation-message donation-message--error" hidden></div>
+        <form id="consider-form" class="donation-form">
+          <label>
+            <span>Display Name (optional — shown on leaderboard)</span>
+            <input type="text" name="donor_name" maxlength="120" />
+          </label>
+          <label>
+            <span>Email (optional — for future updates)</span>
+            <input type="email" name="donor_email" maxlength="160" />
+          </label>
+          <label>
+            <span>Amount (USD)</span>
+            <input type="number" name="amount" min="0.01" step="0.01" required />
+          </label>
+          <label>
+            <span>Transaction / Reference (optional)</span>
+            <input type="text" name="transaction_reference" maxlength="160" />
+          </label>
+          <label>
+            <span>Message to Community (optional)</span>
+            <textarea name="wall_message" rows="3" maxlength="500"></textarea>
+          </label>
+          <label class="donation-form__checkbox">
+            <input type="checkbox" name="display_on_wall" />
+            <span>Show my name and message on the recognition wall</span>
+          </label>
+          <p class="donation-form__disclaimer">This is a self-reported record of your donation. It is not a tax receipt. Please retain your payment confirmation from your payment provider for tax purposes.</p>
+          <button type="submit" class="btn btn--primary">Submit</button>
+        </form>
+        <div id="consider-confirm" class="donation-confirm" hidden>
+          <div class="donation-confirm__icon" aria-hidden="true">&#10003;</div>
+          <h3 class="donation-confirm__title">Thank You!</h3>
+          <p id="consider-confirm-message" class="donation-confirm__message"></p>
+          <a href="community.html" class="btn btn--primary" style="margin-top:1rem;">Back to Community Pages</a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; 2026 Community Ledger. All submissions reviewed before publication.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/donate-instructions.js" type="module"></script>
+</body>
+</html>

@@ -5,7 +5,6 @@
  * and renders them as public-facing community cards.
  *
  * No auth required — this page is fully public.
- * Email addresses are intentionally omitted from the public display.
  */
 
 import supabase from './supabase.js';
@@ -14,14 +13,14 @@ const listEl    = document.getElementById('community-list');
 const loadingEl = document.getElementById('community-loading');
 const emptyEl   = document.getElementById('community-empty');
 
-let donationModalEl = null;
-let donationFormEl = null;
-let donationConfirmEl = null;
+let intentModalEl   = null;
+let intentFormEl    = null;
+let intentConfirmEl = null;
 let activeSubmissionId = null;
 let activeMethod = null;
 let communityLookup = new Map();
 
-initDonationModal();
+initIntentModal();
 
 // ─── Load Data ────────────────────────────────────────────────────────────────
 async function loadCommunities() {
@@ -57,10 +56,10 @@ async function loadCommunities() {
   }));
 
   submissions.forEach(s => listEl.appendChild(buildCard(s)));
-  bindDonationButtons();
+  bindIntentButtons();
 }
 
-// ─── Card Builder ───────────────────────────────────────────────────────────
+// ─── Card Builder ─────────────────────────────────────────────────────────────
 function buildCard(s) {
   const article = document.createElement('article');
   article.className = 'community-card';
@@ -77,61 +76,25 @@ function buildCard(s) {
     <section class="community-card__section">
       <h4>Who We Are</h4>
       <div class="community-card__fields">
-        <div class="community-field">
-          <span class="community-field__label">Mission</span>
-          <p class="community-field__value">${esc(s.mission || '')}</p>
-        </div>
-        <div class="community-field">
-          <span class="community-field__label">Values</span>
-          <p class="community-field__value">${esc(s.values || '')}</p>
-        </div>
-        <div class="community-field">
-          <span class="community-field__label">Local Vision</span>
-          <p class="community-field__value">${esc(s.local_vision || '')}</p>
-        </div>
-        ${s.universal_vision ? `
-        <div class="community-field">
-          <span class="community-field__label">Universal Vision</span>
-          <p class="community-field__value">${esc(s.universal_vision)}</p>
-        </div>` : ''}
+        <div class="community-field"><span class="community-field__label">Mission</span><p class="community-field__value">${esc(s.mission || '')}</p></div>
+        <div class="community-field"><span class="community-field__label">Values</span><p class="community-field__value">${esc(s.values || '')}</p></div>
+        <div class="community-field"><span class="community-field__label">Local Vision</span><p class="community-field__value">${esc(s.local_vision || '')}</p></div>
+        ${s.universal_vision ? `<div class="community-field"><span class="community-field__label">Universal Vision</span><p class="community-field__value">${esc(s.universal_vision)}</p></div>` : ''}
       </div>
     </section>
 
-    ${s.financials.length ? `
-    <section class="community-card__section">
-      <h4>Financial History</h4>
-      <p class="section-desc">Past income and expenses submitted by this community.</p>
-      ${buildTable(s.financials)}
-    </section>` : ''}
-
-    ${s.budget.length ? `
-    <section class="community-card__section">
-      <h4>Budget Needs</h4>
-      <p class="section-desc">Items this community needs to purchase, expects to purchase, or is planning for.</p>
-      ${buildTable(s.budget)}
-    </section>` : ''}
+    ${s.financials.length ? `<section class="community-card__section"><h4>Financial History</h4><p class="section-desc">Past income and expenses submitted by this community.</p>${buildTable(s.financials)}</section>` : ''}
+    ${s.budget.length ? `<section class="community-card__section"><h4>Budget Needs</h4><p class="section-desc">Items this community needs to purchase, expects to purchase, or is planning for.</p>${buildTable(s.budget)}</section>` : ''}
 
     <section class="community-card__section">
       <h4>Transparency</h4>
       <div class="community-card__fields">
-        <div class="community-field">
-          <span class="community-field__label">How Donations Are Tracked</span>
-          <p class="community-field__value">${esc(s.donation_transparency || '')}</p>
-        </div>
-        ${s.application_transparency ? `
-        <div class="community-field">
-          <span class="community-field__label">How Donations Are Applied</span>
-          <p class="community-field__value">${esc(s.application_transparency)}</p>
-        </div>` : ''}
+        <div class="community-field"><span class="community-field__label">How Donations Are Tracked</span><p class="community-field__value">${esc(s.donation_transparency || '')}</p></div>
+        ${s.application_transparency ? `<div class="community-field"><span class="community-field__label">How Donations Are Applied</span><p class="community-field__value">${esc(s.application_transparency)}</p></div>` : ''}
       </div>
     </section>
 
-    ${s.donations.length ? `
-    <section class="community-card__section">
-      <h4>How to Donate</h4>
-      <p class="section-desc">Accepted donation methods submitted by this community.</p>
-      ${buildDonationList(s.id, s.donations)}
-    </section>` : ''}
+    ${s.donations.length ? `<section class="community-card__section"><h4>How to Donate</h4><p class="section-desc">Accepted donation methods submitted by this community.</p>${buildDonationList(s.id, s.donations)}</section>` : ''}
   `;
 
   return article;
@@ -142,98 +105,108 @@ function buildTable(rows) {
   const skip    = ['id', 'submission_id', 'sort_order'];
   const headers = Object.keys(rows[0]).filter(h => !skip.includes(h));
   const head    = headers.map(h => `<th>${h.replace(/_/g, ' ')}</th>`).join('');
-  const body    = rows.map(row =>
-    `<tr>${headers.map(h => `<td>${esc(String(row[h] ?? ''))}</td>`).join('')}</tr>`
-  ).join('');
-  return `
-    <div class="csv-table-wrap">
-      <table class="csv-table">
-        <thead><tr>${head}</tr></thead>
-        <tbody>${body}</tbody>
-      </table>
-    </div>`;
+  const body    = rows.map(row => `<tr>${headers.map(h => `<td>${esc(String(row[h] ?? ''))}</td>`).join('')}</tr>`).join('');
+  return `<div class="csv-table-wrap"><table class="csv-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
-// ─── Donation List Renderer ────────────────────────────────────────────────────
+// ─── Donation List Renderer ───────────────────────────────────────────────────
+// Priority: PayPal > Stripe (if no PayPal) > Postal > Crypto
+// Each card always shows "I Intend to Donate" button.
 function buildDonationList(submissionId, rows) {
   const cols = Object.keys(rows[0]).filter(h => !['id', 'submission_id', 'sort_order'].includes(h));
 
-  if (cols.length <= 4) {
-    return `<div class="donation-methods">${rows.map(row => {
-      const pairs = cols.map(c => ({ key: c, label: c.replace(/_/g, ' '), value: row[c] })).filter(p => p.value);
-      const linkPair = pairs.find(p => p.label.toLowerCase().includes('link') || p.label.toLowerCase().includes('url'));
-      const otherPairs = pairs.filter(p => p !== linkPair);
-      const methodValue = getMethodValue(row, pairs);
-      return `
-        <div class="donation-method-card">
-          ${otherPairs.map(p => `
-            <p><span class="community-field__label">${esc(p.label)}</span> ${esc(String(p.value))}</p>
-          `).join('')}
-          <div class="donation-method-card__actions">
-            ${linkPair ? `<a href="${esc(String(linkPair.value))}" target="_blank" rel="noopener noreferrer" class="btn btn--primary btn--small" style="margin-top:0.5rem;">Donate</a>` : ''}
-            <button type="button" class="btn btn--secondary btn--small js-i-donated" data-submission-id="${esc(submissionId)}" data-method="${esc(methodValue)}">I Donated</button>
-          </div>
-        </div>`;
-    }).join('')}</div>`;
-  }
+  if (cols.length > 4) return buildTable(rows);
 
-  return buildTable(rows);
+  // Detect method type from row data
+  const classify = (row) => {
+    const vals = Object.values(row).map(v => String(v || '').toLowerCase()).join(' ');
+    if (vals.includes('paypal')) return 'paypal';
+    if (vals.includes('stripe')) return 'stripe';
+    if (vals.includes('postal') || vals.includes('mail') || vals.includes('check')) return 'postal';
+    if (vals.includes('crypto') || vals.includes('bitcoin') || vals.includes('ethereum') || vals.includes('btc') || vals.includes('eth')) return 'crypto';
+    return 'other';
+  };
+
+  const classified = rows.map(row => ({ row, type: classify(row) }));
+  const hasPaypal  = classified.some(r => r.type === 'paypal');
+
+  return `<div class="donation-methods">${classified.map(({ row, type }) => {
+    const pairs     = cols.map(c => ({ key: c, label: c.replace(/_/g, ' '), value: row[c] })).filter(p => p.value);
+    const linkPair  = pairs.find(p => p.label.toLowerCase().includes('link') || p.label.toLowerCase().includes('url'));
+    const otherPairs = pairs.filter(p => p !== linkPair);
+    const methodLabel = getMethodLabel(row, pairs);
+
+    let actionButtons = '';
+
+    if (type === 'paypal') {
+      const href = linkPair ? esc(String(linkPair.value)) : '#';
+      actionButtons = `<a href="${href}" target="_blank" rel="noopener noreferrer" class="btn btn--paypal btn--small">Donate via PayPal</a>`;
+    } else if (type === 'stripe' && !hasPaypal) {
+      const href = linkPair ? esc(String(linkPair.value)) : '#';
+      actionButtons = `<a href="${href}" target="_blank" rel="noopener noreferrer" class="btn btn--stripe btn--small">Donate via Stripe</a>`;
+    } else if (type === 'postal' || type === 'crypto') {
+      const params = new URLSearchParams({ submission_id: submissionId, method: type });
+      actionButtons = `<a href="donate-instructions.html?${params}" class="btn btn--instructions btn--small">How to ${type === 'postal' ? 'Mail a Donation' : 'Send Crypto'}</a>`;
+    } else if (linkPair) {
+      actionButtons = `<a href="${esc(String(linkPair.value))}" target="_blank" rel="noopener noreferrer" class="btn btn--primary btn--small">Donate</a>`;
+    }
+
+    return `
+      <div class="donation-method-card">
+        ${otherPairs.map(p => `<p><span class="community-field__label">${esc(p.label)}</span> ${esc(String(p.value))}</p>`).join('')}
+        <div class="donation-method-card__actions">
+          ${actionButtons}
+          <button type="button" class="btn btn--intent btn--small js-intent" data-submission-id="${esc(submissionId)}" data-method="${esc(methodLabel)}">I Intend to Donate</button>
+        </div>
+        ${(type === 'paypal' || (type === 'stripe' && !hasPaypal)) ? `<p class="donation-note">Clicking the donate button takes you to the payment site. No donation is made until you complete the process there. You may also log your intent now and donate when you\'re ready.</p>` : ''}
+      </div>`;
+  }).join('')}</div>`;
 }
 
-// ─── Donation Modal ───────────────────────────────────────────────────────────
-function initDonationModal() {
+// ─── Intent Modal ─────────────────────────────────────────────────────────────
+function initIntentModal() {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = `
-    <div id="donation-modal" class="donation-modal" hidden>
-      <div class="donation-modal__backdrop" data-close-donation-modal></div>
-      <div class="donation-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="donation-modal-title">
-        <button type="button" class="donation-modal__close" aria-label="Close donation form" data-close-donation-modal>&times;</button>
+    <div id="intent-modal" class="donation-modal" hidden>
+      <div class="donation-modal__backdrop" data-close-intent-modal></div>
+      <div class="donation-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="intent-modal-title">
+        <button type="button" class="donation-modal__close" aria-label="Close" data-close-intent-modal>&times;</button>
         <div class="donation-modal__content">
 
-          <!-- Form view -->
-          <div id="donation-form-view">
-            <h3 id="donation-modal-title">Report Your Donation</h3>
-            <p class="section-desc" id="donation-modal-community"></p>
-            <div id="donation-error" class="donation-message donation-message--error" hidden></div>
-            <form id="donation-form" class="donation-form">
+          <div id="intent-form-view">
+            <h3 id="intent-modal-title">I Intend to Donate</h3>
+            <p class="section-desc" id="intent-modal-community"></p>
+            <p class="donation-note" style="margin-bottom:1rem;">Logging your intent does not complete a donation. It helps this community understand how much support is on the way. Donate at your convenience using the payment button.</p>
+            <div id="intent-error" class="donation-message donation-message--error" hidden></div>
+            <form id="intent-form" class="donation-form">
               <label>
-                <span>Donor Name (optional)</span>
+                <span>Display Name (optional — shown on leaderboard)</span>
                 <input type="text" name="donor_name" maxlength="120" />
               </label>
               <label>
-                <span>Donor Email (optional, for receipt)</span>
+                <span>Email (optional — for future updates)</span>
                 <input type="email" name="donor_email" maxlength="160" />
               </label>
               <label>
-                <span>Amount (USD)</span>
+                <span>Intended Amount (USD)</span>
                 <input type="number" name="amount" min="0.01" step="0.01" required />
               </label>
               <label>
-                <span>Method</span>
-                <input type="text" name="method" required />
-              </label>
-              <label>
-                <span>Transaction Reference (optional)</span>
-                <input type="text" name="transaction_reference" maxlength="160" />
+                <span>Message to Community (optional)</span>
+                <textarea name="wall_message" rows="3" maxlength="500"></textarea>
               </label>
               <label class="donation-form__checkbox">
                 <input type="checkbox" name="display_on_wall" />
-                <span>Display on recognition wall</span>
+                <span>Show my name and message on the recognition wall</span>
               </label>
-              <label>
-                <span>Message to Community (optional)</span>
-                <textarea name="wall_message" rows="4" maxlength="500"></textarea>
-              </label>
-              <p class="donation-form__disclaimer">This is a self-reported record of your donation. It is not a tax receipt. Please retain your payment confirmation from your payment provider for tax purposes.</p>
-              <button type="submit" class="btn btn--primary">Submit Donation</button>
+              <button type="submit" class="btn btn--primary">Log My Intent</button>
             </form>
           </div>
 
-          <!-- Success view (hidden until submit succeeds) -->
-          <div id="donation-confirm-view" class="donation-confirm" hidden>
+          <div id="intent-confirm-view" class="donation-confirm" hidden>
             <div class="donation-confirm__icon" aria-hidden="true">&#10003;</div>
-            <h3 class="donation-confirm__title">Thank You!</h3>
-            <p id="donation-confirm-message" class="donation-confirm__message"></p>
+            <h3 class="donation-confirm__title">Intent Logged!</h3>
+            <p id="intent-confirm-message" class="donation-confirm__message"></p>
             <p class="donation-confirm__closing">This window will close automatically.</p>
           </div>
 
@@ -244,129 +217,106 @@ function initDonationModal() {
 
   document.body.appendChild(wrapper.firstElementChild);
 
-  donationModalEl   = document.getElementById('donation-modal');
-  donationFormEl    = document.getElementById('donation-form');
-  donationConfirmEl = document.getElementById('donation-confirm-view');
+  intentModalEl   = document.getElementById('intent-modal');
+  intentFormEl    = document.getElementById('intent-form');
+  intentConfirmEl = document.getElementById('intent-confirm-view');
 
-  donationModalEl.addEventListener('click', (event) => {
-    if (event.target.matches('[data-close-donation-modal]')) closeDonationModal();
+  intentModalEl.addEventListener('click', e => {
+    if (e.target.matches('[data-close-intent-modal]')) closeIntentModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && intentModalEl && !intentModalEl.hidden) closeIntentModal();
   });
 
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && donationModalEl && !donationModalEl.hidden) closeDonationModal();
-  });
-
-  donationFormEl.addEventListener('submit', handleDonationSubmit);
-  donationFormEl.donor_name.addEventListener('input', syncWallConsentDefault);
-}
-
-function bindDonationButtons() {
-  document.querySelectorAll('.js-i-donated').forEach(btn => {
-    btn.addEventListener('click', () => openDonationModal(btn.dataset.submissionId, btn.dataset.method));
+  intentFormEl.addEventListener('submit', handleIntentSubmit);
+  intentFormEl.donor_name.addEventListener('input', () => {
+    intentFormEl.display_on_wall.checked = Boolean(intentFormEl.donor_name.value.trim());
   });
 }
 
-function openDonationModal(submissionId, method) {
+function bindIntentButtons() {
+  document.querySelectorAll('.js-intent').forEach(btn => {
+    btn.addEventListener('click', () => openIntentModal(btn.dataset.submissionId, btn.dataset.method));
+  });
+}
+
+function openIntentModal(submissionId, method) {
   activeSubmissionId = submissionId;
   activeMethod = method || '';
 
   const community = communityLookup.get(submissionId);
   const communityLabel = community ? community.community_name : 'this community';
 
-  donationFormEl.reset();
-  donationFormEl.method.value = activeMethod;
-  donationFormEl.display_on_wall.checked = false;
+  intentFormEl.reset();
+  intentFormEl.display_on_wall.checked = false;
+  document.getElementById('intent-error').hidden = true;
+  document.getElementById('intent-form-view').hidden = false;
+  intentConfirmEl.hidden = true;
+  document.getElementById('intent-modal-community').textContent = `Logging intent to donate to ${communityLabel}.`;
 
-  const errorEl = document.getElementById('donation-error');
-  errorEl.hidden = true;
-  errorEl.textContent = '';
-
-  document.getElementById('donation-form-view').hidden = false;
-  donationConfirmEl.hidden = true;
-  document.getElementById('donation-modal-community').textContent = `You are reporting a donation to ${communityLabel}.`;
-
-  donationModalEl.hidden = false;
+  intentModalEl.hidden = false;
   document.body.classList.add('modal-open');
-  donationFormEl.amount.focus();
+  intentFormEl.amount.focus();
 }
 
-function closeDonationModal() {
-  donationModalEl.hidden = true;
+function closeIntentModal() {
+  intentModalEl.hidden = true;
   document.body.classList.remove('modal-open');
   activeSubmissionId = null;
   activeMethod = null;
 }
 
-function syncWallConsentDefault() {
-  if (!donationFormEl) return;
-  donationFormEl.display_on_wall.checked = Boolean(donationFormEl.donor_name.value.trim());
-}
-
-async function handleDonationSubmit(event) {
+async function handleIntentSubmit(event) {
   event.preventDefault();
-
   if (!activeSubmissionId) return;
 
-  const submitButton = donationFormEl.querySelector('button[type="submit"]');
-  const errorEl = document.getElementById('donation-error');
-  submitButton.disabled = true;
-  submitButton.textContent = 'Submitting...';
+  const submitBtn = intentFormEl.querySelector('button[type="submit"]');
+  const errorEl   = document.getElementById('intent-error');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Logging...';
   errorEl.hidden = true;
 
-  const donorName           = donationFormEl.donor_name.value.trim();
-  const donorEmail          = donationFormEl.donor_email.value.trim();
-  const amount              = Number(donationFormEl.amount.value);
-  const method              = donationFormEl.method.value.trim() || activeMethod;
-  const transactionReference = donationFormEl.transaction_reference.value.trim();
-  const displayOnWall       = donationFormEl.display_on_wall.checked;
-  const wallMessage         = donationFormEl.wall_message.value.trim();
+  const donorName    = intentFormEl.donor_name.value.trim();
+  const donorEmail   = intentFormEl.donor_email.value.trim();
+  const amount       = Number(intentFormEl.amount.value);
+  const wallMessage  = intentFormEl.wall_message.value.trim();
+  const displayOnWall = intentFormEl.display_on_wall.checked;
 
   try {
-    const { data, error } = await supabase
-      .from('donations')
-      .insert({
-        submission_id:         activeSubmissionId,
-        donor_name:            donorName || null,
-        donor_email:           donorEmail || null,
-        amount,
-        method,
-        transaction_reference: transactionReference || null,
-        status:                'self_reported',
-        display_on_wall:       displayOnWall,
-        wall_message:          wallMessage || null,
-      })
-      .select('id')
-      .single();
+    const { error } = await supabase.from('donations').insert({
+      submission_id:   activeSubmissionId,
+      donor_name:      donorName || null,
+      donor_email:     donorEmail || null,
+      amount,
+      method:          activeMethod,
+      status:          'self_reported',
+      donation_type:   'intent',
+      weight:          0.250,
+      display_on_wall: displayOnWall,
+      wall_message:    wallMessage || null,
+    });
 
     if (error) throw error;
 
-    if (donorEmail && data?.id) {
-      const { error: fnError } = await supabase.functions.invoke('send-donation-receipt', {
-        body: { donation_id: data.id },
-      });
-      if (fnError) console.error('[community] receipt send error:', fnError);
-    }
-
-    // Show full-screen confirmation — hide the form
-    document.getElementById('donation-form-view').hidden = true;
-    document.getElementById('donation-confirm-message').textContent = donorEmail
-      ? `Your donation was recorded. A receipt is on its way to ${donorEmail}.`
-      : 'Your donation has been recorded. Thank you for supporting this community.';
-    donationConfirmEl.hidden = false;
-
-    setTimeout(() => closeDonationModal(), 4000);
+    document.getElementById('intent-form-view').hidden = true;
+    document.getElementById('intent-confirm-message').textContent = donorEmail
+      ? `Your intent has been logged. We\'ll keep you updated at ${donorEmail}.`
+      : 'Your intent has been logged. Thank you for your support.';
+    intentConfirmEl.hidden = false;
+    setTimeout(() => closeIntentModal(), 4000);
 
   } catch (err) {
-    console.error('[community] donation submit error:', err);
-    errorEl.textContent = err?.message || 'Unable to record donation right now. Please try again.';
+    console.error('[community] intent submit error:', err);
+    errorEl.textContent = err?.message || 'Unable to log intent right now. Please try again.';
     errorEl.hidden = false;
   } finally {
-    submitButton.disabled = false;
-    submitButton.textContent = 'Submit Donation';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Log My Intent';
   }
 }
 
-function getMethodValue(row, pairs) {
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getMethodLabel(row, pairs) {
   const preferred = ['method', 'type', 'platform', 'provider', 'channel'];
   for (const key of preferred) {
     if (row[key]) return String(row[key]);
@@ -375,14 +325,9 @@ function getMethodValue(row, pairs) {
   return firstNonLink ? String(firstNonLink.value) : 'Donation';
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function esc(str) {
   if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function formatDate(iso) {
