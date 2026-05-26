@@ -8,8 +8,8 @@
 import Auth from './auth.js';
 import supabase from './supabase.js';
 
-const EDGE_BASE   = 'https://hhyhulqngdkwsxhymmcd.supabase.co/functions/v1';
-const TEST_UUID   = '00000000-0000-0000-0000-000000000001';
+const EDGE_BASE = 'https://hhyhulqngdkwsxhymmcd.supabase.co/functions/v1';
+const TEST_UUID = '00000000-0000-0000-0000-000000000001';
 
 const params = new URLSearchParams(window.location.search);
 if (params.get('dev') === 'true') {
@@ -32,7 +32,7 @@ function showOutput(content, elId = 'test-panel-output') {
 }
 
 async function getToken() {
-  const session = Auth.getSession ? Auth.getSession() : null;
+  const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token ?? '';
 }
 
@@ -94,22 +94,18 @@ document.getElementById('test-load-submission-btn')?.addEventListener('click', a
 document.getElementById('test-insert-fixture-btn')?.addEventListener('click', async () => {
   showOutput('⏳ Preparing test fixture...', 'fixture-output');
   try {
-    // Parse fixtures from textareas
     const core          = JSON.parse(document.getElementById('fixture-core').value);
     const financialRows = parseCSV(document.getElementById('fixture-financials').value);
     const budgetRows    = parseCSV(document.getElementById('fixture-budget').value);
     const donationRows  = parseCSV(document.getElementById('fixture-donations').value);
 
-    // Delete existing test record first (upsert by UUID)
     await supabase.from('submissions').delete().eq('id', TEST_UUID);
 
-    // Insert core submission
     const { error: coreErr } = await supabase
       .from('submissions')
       .insert({ ...core, id: TEST_UUID });
     if (coreErr) throw coreErr;
 
-    // Insert child rows
     const financialInserts = financialRows.map((r, i) => ({
       submission_id: TEST_UUID, section: r.section, name: r.name,
       amount: Number(r.amount), notes: r.notes || null, sort_order: i
@@ -142,7 +138,6 @@ document.getElementById('test-insert-fixture-btn')?.addEventListener('click', as
     if (be) throw be;
     if (de) throw de;
 
-    // Auto-fill the UUID field for convenience
     const idField = document.getElementById('test-submission-id');
     if (idField) idField.value = TEST_UUID;
 
