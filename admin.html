@@ -68,6 +68,29 @@
 
         <div id="reasons-manager" class="reasons-manager"></div>
       </section>
+
+      <!-- ═══ Developer Test Panel ═══════════════════════════════════════════
+           Visible only when ?dev=true is in the URL.
+           Lets admins trigger Edge Functions without recreating submissions.
+      ════════════════════════════════════════════════════════════════════════ -->
+      <section id="dev-test-panel" class="form-section" style="display:none;border:2px dashed var(--color-warning, #d97706);">
+        <h3>🧪 Developer Test Panel</h3>
+        <p class="section-desc">Only visible at <code>admin.html?dev=true</code>. Use this to test Edge Functions and integrations without creating a real submission.</p>
+
+        <div class="field-group" style="max-width:480px;">
+          <label for="test-submission-id">Submission ID <span class="badge badge--optional">UUID</span></label>
+          <input type="text" id="test-submission-id" placeholder="Paste a submission UUID here" />
+          <p class="field-hint">Find IDs in the Supabase <code>public.submissions</code> table, or use a rejected submission from a previous test.</p>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:1rem;">
+          <button type="button" id="test-rejection-email-btn" class="btn btn--secondary">📧 Send Rejection Email</button>
+          <button type="button" id="test-load-submission-btn" class="btn btn--secondary">🔍 Load Submission Info</button>
+        </div>
+
+        <div id="test-panel-output" style="margin-top:1.25rem;padding:1rem;background:var(--color-surface-alt,#f8f8f8);border-radius:6px;font-family:monospace;font-size:0.85rem;white-space:pre-wrap;display:none;"></div>
+      </section>
+
     </main>
 
     <footer class="site-footer">
@@ -80,5 +103,6 @@
 
   <script src="assets/js/auth.js" type="module"></script>
   <script src="assets/js/admin.js" type="module"></script>
+  <script src="assets/js/admin-test-panel.js" type="module"></script>
 </body>
 </html>
