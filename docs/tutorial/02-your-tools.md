@@ -68,7 +68,7 @@ Cloudflare will assign your site a URL like `community-ledger.pages.dev`. Write 
 
 ## Step 3 — Create a Supabase Account
 
-Supabase is where your application's data will be stored. When someone fills out the intake form, that information will be saved to Supabase. When the admin approves a submission, Supabase records that too.
+Supabase is where your application's data will be stored. When someone fills out the intake form, that information will be saved to Supabase. When the admin approves a submission, Supabase records that too. And when you create a new document for this project, a record of it goes in Supabase too — in a table called `documentation_catalog`.
 
 1. Go to [supabase.com](https://supabase.com)
 2. Click **Start your project**
@@ -92,7 +92,7 @@ You do not need to do anything inside Supabase yet. We will return to it when we
 |---------|-------------|--------|
 | GitHub | Stores your code | ✅ Created |
 | Cloudflare Pages | Publishes your site | ✅ Created |
-| Supabase | Stores your data | ✅ Created |
+| Supabase | Stores your data and documentation index | ✅ Created |
 
 These three accounts form the complete infrastructure for your application. Everything you build will live in or flow through one of these three services.
 
@@ -110,6 +110,8 @@ Security is not a feature you add later. It is a habit you build from the beginn
 
 > ### 💡 Help Your Future You — Keep a Project Reference Document
 > As you build, you will collect URLs, IDs, and account names across multiple services. Start a simple document right now — even a notes app works — and paste each one in as you go. This tutorial includes a template called `docs/project-reference.md` in the repository. Copy it and fill it in as you complete each step. Your future self will thank you the first time you need to find something at 10pm.
+>
+> And from the very first document you create: add it to the `documentation_catalog` table in Supabase. Section 7 shows you exactly how. The habit is easy to build at the start, and very hard to retrofit later.
 
 ---
 
@@ -124,3 +126,5 @@ Security is not a feature you add later. It is a habit you build from the beginn
 **3.** Cloudflare Pages automatically updates your live site every time you save a change to GitHub. What does that tell you about the relationship between GitHub and Cloudflare Pages?
 
 **4.** You now have accounts with three different services. Each one holds something valuable — your code, your live application, and your community's data. If you had to rank them by how important it is to protect them, what order would you choose and why?
+
+**5.** The tutorial says to add every new document to the `documentation_catalog` table as soon as you create it. Why do you think doing it immediately matters more than doing it in a batch at the end of a session?

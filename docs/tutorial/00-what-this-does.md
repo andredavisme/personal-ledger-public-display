@@ -64,7 +64,7 @@ To make the public view useful and honest, financial information is broken into 
 
 ### Bucket 1 — Financial History (Past Income and Expenses)
 
-This answers: *"What money has the community already received or spent?"*
+This answers: *“What money has the community already received or spent?”*
 
 Each line is a simple record, such as:
 - `Income — grant from XYZ Foundation — $5,000`
@@ -74,7 +74,7 @@ These lines come from uploaded financial statements, but the app displays them a
 
 ### Bucket 2 — Budget Needs (What the Money Will Be Spent On)
 
-This answers: *"What exactly will my donation help pay for?"*
+This answers: *“What exactly will my donation help pay for?”*
 
 Each item is tagged with one of four categories:
 
@@ -93,7 +93,7 @@ The public page groups these items so donors can see a clear breakdown before gi
 
 ### Bucket 3 — Donation Methods (How to Give)
 
-This answers: *"How do I actually send money?"*
+This answers: *“How do I actually send money?”*
 
 Each method is one record — a link, an address, or a set of instructions. Supported methods include:
 
@@ -114,9 +114,9 @@ Behind the scenes, two tools help administrators stay organized and accountable.
 
 **Correction reasons list**
 A managed checklist of reasons a submission might need changes before approval — for example:
-- "Missing financial statements"
-- "Budget totals don't add up"
-- "Donation method details incomplete"
+- “Missing financial statements”
+- “Budget totals don’t add up”
+- “Donation method details incomplete”
 
 Administrators pick from this list when rejecting a submission, so the feedback is specific and consistent.
 
@@ -139,13 +139,27 @@ The public ledger page only shows **approved** communities. For each one, a dono
 2. **Financial history** — a simple income vs. expenses breakdown
 3. **Budget needs** — items grouped by Purchased / Expected / Desired / Contingency
 4. **Donation methods** — buttons or instructions for every accepted payment type
+5. **Recognition wall** — donors who have self-reported their contribution (with their consent)
 
-A donor moving through the page is answering four questions in order:
+A donor moving through the page is answering five questions in order:
 
-> *"Who is this?"*
-> *"What do they believe in?"*
-> *"What have they done with money before, and what will they do with mine?"*
-> *"How do I send it?"*
+> *“Who is this?”*
+> *“What do they believe in?”*
+> *“What have they done with money before, and what will they do with mine?”*
+> *“How do I send it?”*
+> *“Who else has contributed?”*
+
+---
+
+## The Fourth Thing: Documentation as Infrastructure
+
+There is a fourth thing this project does that most applications do not: it **documents itself** in the same database that runs it.
+
+Every architecture decision, every tutorial section, every session summary is stored as a record in a `documentation_catalog` table. You can query it the same way you query financial data.
+
+This is not an optional feature. It is how the project stays understandable as it grows, and how a new contributor — or a returning one who has been away for a month — can orient themselves in minutes instead of hours.
+
+Section 7 covers how to build this catalog and how to use it.
 
 ---
 
@@ -164,15 +178,21 @@ Approve    Reject
 Public      Email sent with
 page        correction reasons
 goes live   + invite to resubmit
+   ↓
+Donor views community page
+        ↓
+Donor clicks "I Donated"
+        ↓
+Donation recorded + receipt emailed
 ```
 
 ---
 
 ## Before You Move On
 
-You don't need to memorize any of this. The sections that follow will build each piece one at a time — form, database, admin page, public page — and you'll understand each one in context as you go.
+You don’t need to memorize any of this. The sections that follow will build each piece one at a time — form, database, admin page, public page — and you’ll understand each one in context as you go.
 
-This overview exists so that when you're deep in the details of a single file or a single database table, you can always ask: *"Where does this fit in the collect → store → show loop?"* The answer will be there.
+This overview exists so that when you’re deep in the details of a single file or a single database table, you can always ask: *“Where does this fit in the collect → store → show loop?”* The answer will be there.
 
 ---
 
@@ -187,3 +207,5 @@ This overview exists so that when you're deep in the details of a single file or
 **3.** Think about the action log that records every admin decision. Why might that matter to the communities using this application — not just the administrator?
 
 **4.** Pick one of the donation methods (PayPal, Stripe, postal mail, in-person, cash, cryptocurrency). Who in your community might prefer that method, and why?
+
+**5.** The project stores its documentation in the same database as its data. What advantage does that give you compared to keeping documentation only in files?
