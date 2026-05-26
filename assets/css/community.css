@@ -87,7 +87,124 @@
   font-size: 0.9rem;
 }
 
+.donation-method-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
 .btn--small {
   padding: 0.4rem 0.9rem;
   font-size: 0.85rem;
+}
+
+.modal-open {
+  overflow: hidden;
+}
+
+.donation-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.donation-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.donation-modal__dialog {
+  position: relative;
+  z-index: 1;
+  width: min(92vw, 640px);
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: 5vh auto;
+  background: var(--color-surface, #ffffff);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+}
+
+.donation-modal__content {
+  padding: 1.5rem;
+}
+
+.donation-modal__close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  border: 0;
+  background: transparent;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-text-muted, #64748b);
+}
+
+.donation-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.donation-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.donation-form span {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.donation-form input,
+.donation-form textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: 8px;
+  font: inherit;
+  background: #fff;
+}
+
+.donation-form textarea {
+  resize: vertical;
+}
+
+.donation-form__checkbox {
+  display: flex !important;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.donation-form__checkbox input {
+  width: auto;
+  margin: 0;
+}
+
+.donation-form__disclaimer {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text-muted, #64748b);
+}
+
+.donation-message {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.donation-message--success {
+  background: #ecfdf5;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.donation-message--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
 }

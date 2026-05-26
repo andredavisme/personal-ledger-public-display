@@ -14,6 +14,15 @@ const listEl    = document.getElementById('community-list');
 const loadingEl = document.getElementById('community-loading');
 const emptyEl   = document.getElementById('community-empty');
 
+let donationModalEl = null;
+let donationFormEl = null;
+let donationMessageEl = null;
+let activeSubmissionId = null;
+let activeMethod = null;
+let communityLookup = new Map();
+
+initDonationModal();
+
 // ─── Load Data ────────────────────────────────────────────────────────────────
 async function loadCommunities() {
   const { data: submissions, error } = await supabase
@@ -35,7 +44,6 @@ async function loadCommunities() {
     return;
   }
 
-  // Load child tables for all submissions in parallel
   await Promise.all(submissions.map(async s => {
     const [{ data: financials }, { data: budget }, { data: donations }] = await Promise.all([
       supabase.from('submission_financials').select('*').eq('submission_id', s.id).order('sort_order'),
@@ -45,9 +53,11 @@ async function loadCommunities() {
     s.financials = financials || [];
     s.budget     = budget     || [];
     s.donations  = donations  || [];
+    communityLookup.set(s.id, s);
   }));
 
   submissions.forEach(s => listEl.appendChild(buildCard(s)));
+  bindDonationButtons();
 }
 
 // ─── Card Builder ───────────────────────────────────────────────────────────
@@ -57,7 +67,6 @@ function buildCard(s) {
   article.id = `community-${s.id}`;
 
   article.innerHTML = `
-    <!-- Header -->
     <div class="community-card__header">
       <div>
         <h3>${esc(s.community_name)}</h3>
@@ -65,7 +74,6 @@ function buildCard(s) {
       </div>
     </div>
 
-    <!-- Identity -->
     <section class="community-card__section">
       <h4>Who We Are</h4>
       <div class="community-card__fields">
@@ -89,7 +97,6 @@ function buildCard(s) {
       </div>
     </section>
 
-    <!-- Financial Statements -->
     ${s.financials.length ? `
     <section class="community-card__section">
       <h4>Financial History</h4>
@@ -97,7 +104,6 @@ function buildCard(s) {
       ${buildTable(s.financials)}
     </section>` : ''}
 
-    <!-- Budget -->
     ${s.budget.length ? `
     <section class="community-card__section">
       <h4>Budget Needs</h4>
@@ -105,7 +111,6 @@ function buildCard(s) {
       ${buildTable(s.budget)}
     </section>` : ''}
 
-    <!-- Donation Transparency -->
     <section class="community-card__section">
       <h4>Transparency</h4>
       <div class="community-card__fields">
@@ -121,12 +126,11 @@ function buildCard(s) {
       </div>
     </section>
 
-    <!-- Donation Methods -->
     ${s.donations.length ? `
     <section class="community-card__section">
       <h4>How to Donate</h4>
       <p class="section-desc">Accepted donation methods submitted by this community.</p>
-      ${buildDonationList(s.donations)}
+      ${buildDonationList(s.id, s.donations)}
     </section>` : ''}
   `;
 
@@ -151,29 +155,212 @@ function buildTable(rows) {
 }
 
 // ─── Donation List Renderer ────────────────────────────────────────────────────
-function buildDonationList(rows) {
-  // If rows have a recognizable 'method' or 'type' column, render as cards
-  // Otherwise fall back to table
-  const cols    = Object.keys(rows[0]).filter(h => !['id', 'submission_id', 'sort_order'].includes(h));
-  const hasLink = cols.some(c => c.toLowerCase().includes('link') || c.toLowerCase().includes('url'));
+function buildDonationList(submissionId, rows) {
+  const cols = Object.keys(rows[0]).filter(h => !['id', 'submission_id', 'sort_order'].includes(h));
 
   if (cols.length <= 4) {
-    // Render as donation method cards
     return `<div class="donation-methods">${rows.map(row => {
-      const pairs = cols.map(c => ({ label: c.replace(/_/g, ' '), value: row[c] })).filter(p => p.value);
+      const pairs = cols.map(c => ({ key: c, label: c.replace(/_/g, ' '), value: row[c] })).filter(p => p.value);
       const linkPair = pairs.find(p => p.label.toLowerCase().includes('link') || p.label.toLowerCase().includes('url'));
       const otherPairs = pairs.filter(p => p !== linkPair);
+      const methodValue = getMethodValue(row, pairs);
       return `
         <div class="donation-method-card">
           ${otherPairs.map(p => `
             <p><span class="community-field__label">${esc(p.label)}</span> ${esc(String(p.value))}</p>
           `).join('')}
-          ${linkPair ? `<a href="${esc(String(linkPair.value))}" target="_blank" rel="noopener noreferrer" class="btn btn--primary btn--small" style="margin-top:0.5rem;">Donate</a>` : ''}
+          <div class="donation-method-card__actions">
+            ${linkPair ? `<a href="${esc(String(linkPair.value))}" target="_blank" rel="noopener noreferrer" class="btn btn--primary btn--small" style="margin-top:0.5rem;">Donate</a>` : ''}
+            <button type="button" class="btn btn--secondary btn--small js-i-donated" data-submission-id="${esc(submissionId)}" data-method="${esc(methodValue)}">I Donated</button>
+          </div>
         </div>`;
     }).join('')}</div>`;
   }
 
   return buildTable(rows);
+}
+
+// ─── Donation Modal ───────────────────────────────────────────────────────────
+function initDonationModal() {
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = `
+    <div id="donation-modal" class="donation-modal" hidden>
+      <div class="donation-modal__backdrop" data-close-donation-modal></div>
+      <div class="donation-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="donation-modal-title">
+        <button type="button" class="donation-modal__close" aria-label="Close donation form" data-close-donation-modal>&times;</button>
+        <div class="donation-modal__content">
+          <h3 id="donation-modal-title">Report Your Donation</h3>
+          <p class="section-desc" id="donation-modal-community"></p>
+          <div id="donation-message" class="donation-message" hidden></div>
+          <form id="donation-form" class="donation-form">
+            <label>
+              <span>Donor Name (optional)</span>
+              <input type="text" name="donor_name" maxlength="120" />
+            </label>
+            <label>
+              <span>Donor Email (optional, for receipt)</span>
+              <input type="email" name="donor_email" maxlength="160" />
+            </label>
+            <label>
+              <span>Amount (USD)</span>
+              <input type="number" name="amount" min="0.01" step="0.01" required />
+            </label>
+            <label>
+              <span>Method</span>
+              <input type="text" name="method" required />
+            </label>
+            <label>
+              <span>Transaction Reference (optional)</span>
+              <input type="text" name="transaction_reference" maxlength="160" />
+            </label>
+            <label class="donation-form__checkbox">
+              <input type="checkbox" name="display_on_wall" />
+              <span>Display on recognition wall</span>
+            </label>
+            <label>
+              <span>Message to Community (optional)</span>
+              <textarea name="wall_message" rows="4" maxlength="500"></textarea>
+            </label>
+            <p class="donation-form__disclaimer">This is a self-reported record of your donation. It is not a tax receipt. Please retain your payment confirmation from your payment provider for tax purposes.</p>
+            <button type="submit" class="btn btn--primary">Submit Donation</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(wrapper.firstElementChild);
+
+  donationModalEl = document.getElementById('donation-modal');
+  donationFormEl = document.getElementById('donation-form');
+  donationMessageEl = document.getElementById('donation-message');
+
+  donationModalEl.addEventListener('click', (event) => {
+    if (event.target.matches('[data-close-donation-modal]')) closeDonationModal();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && donationModalEl && !donationModalEl.hidden) closeDonationModal();
+  });
+
+  donationFormEl.addEventListener('submit', handleDonationSubmit);
+  donationFormEl.donor_name.addEventListener('input', syncWallConsentDefault);
+}
+
+function bindDonationButtons() {
+  document.querySelectorAll('.js-i-donated').forEach(btn => {
+    btn.addEventListener('click', () => openDonationModal(btn.dataset.submissionId, btn.dataset.method));
+  });
+}
+
+function openDonationModal(submissionId, method) {
+  activeSubmissionId = submissionId;
+  activeMethod = method || '';
+
+  const community = communityLookup.get(submissionId);
+  const communityLabel = community ? community.community_name : 'this community';
+
+  donationFormEl.reset();
+  donationFormEl.method.value = activeMethod;
+  donationFormEl.display_on_wall.checked = Boolean(donationFormEl.donor_name.value.trim());
+  donationMessageEl.hidden = true;
+  donationMessageEl.textContent = '';
+  donationMessageEl.className = 'donation-message';
+  document.getElementById('donation-modal-community').textContent = `You are reporting a donation to ${communityLabel}.`;
+
+  donationModalEl.hidden = false;
+  document.body.classList.add('modal-open');
+  donationFormEl.amount.focus();
+}
+
+function closeDonationModal() {
+  donationModalEl.hidden = true;
+  document.body.classList.remove('modal-open');
+  activeSubmissionId = null;
+  activeMethod = null;
+}
+
+function syncWallConsentDefault() {
+  if (!donationFormEl) return;
+  if (!donationFormEl.donor_name.value.trim()) {
+    donationFormEl.display_on_wall.checked = false;
+    return;
+  }
+  donationFormEl.display_on_wall.checked = true;
+}
+
+async function handleDonationSubmit(event) {
+  event.preventDefault();
+
+  if (!activeSubmissionId) return;
+
+  const submitButton = donationFormEl.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  submitButton.textContent = 'Submitting...';
+
+  const donorName = donationFormEl.donor_name.value.trim();
+  const donorEmail = donationFormEl.donor_email.value.trim();
+  const amount = Number(donationFormEl.amount.value);
+  const method = donationFormEl.method.value.trim() || activeMethod;
+  const transactionReference = donationFormEl.transaction_reference.value.trim();
+  const displayOnWall = donationFormEl.display_on_wall.checked;
+  const wallMessage = donationFormEl.wall_message.value.trim();
+
+  try {
+    const payload = {
+      submission_id: activeSubmissionId,
+      donor_name: donorName || null,
+      donor_email: donorEmail || null,
+      amount,
+      method,
+      transaction_reference: transactionReference || null,
+      status: 'self_reported',
+      display_on_wall: displayOnWall,
+      wall_message: wallMessage || null,
+    };
+
+    const { data, error } = await supabase
+      .from('donations')
+      .insert(payload)
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    if (donorEmail && data?.id) {
+      const { error: fnError } = await supabase.functions.invoke('send-donation-receipt', {
+        body: { donation_id: data.id },
+      });
+      if (fnError) {
+        console.error('[community] receipt send error:', fnError);
+      }
+    }
+
+    donationMessageEl.textContent = donorEmail
+      ? 'Thank you. Your donation was recorded and your receipt email is on the way.'
+      : 'Thank you. Your donation was recorded.';
+    donationMessageEl.className = 'donation-message donation-message--success';
+    donationMessageEl.hidden = false;
+
+    setTimeout(() => closeDonationModal(), 1600);
+  } catch (error) {
+    console.error('[community] donation submit error:', error);
+    donationMessageEl.textContent = error?.message || 'Unable to record donation right now. Please try again.';
+    donationMessageEl.className = 'donation-message donation-message--error';
+    donationMessageEl.hidden = false;
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = 'Submit Donation';
+  }
+}
+
+function getMethodValue(row, pairs) {
+  const preferred = ['method', 'type', 'platform', 'provider', 'channel'];
+  for (const key of preferred) {
+    if (row[key]) return String(row[key]);
+  }
+  const firstNonLink = pairs.find(p => !(p.label.toLowerCase().includes('link') || p.label.toLowerCase().includes('url')));
+  return firstNonLink ? String(firstNonLink.value) : 'Donation';
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -183,7 +370,7 @@ function esc(str) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/\"/g, '&quot;');
 }
 
 function formatDate(iso) {
