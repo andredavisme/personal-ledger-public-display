@@ -64,10 +64,72 @@
         <div id="reasons-manager" class="reasons-manager"></div>
       </section>
 
-      <!-- ═══ Developer Test Panel ═════════════════════════════════════════════════════════════════════════════════
+      <!-- ═══ Community Digest Control Panel ═════════════════════════════════════════════════
+           This panel is the ONLY way to trigger the community digest email.
+           There is no automatic cron job. This is intentional.
+
+           Why manual?
+             Sending email to community contacts is a meaningful, visible action.
+             A human review step prevents accidental duplicate sends, ensures the
+             digest window is correct, and keeps the admin aware of outbound activity.
+
+           How it works:
+             1. The panel reads the most recent row in public.digest_log to determine
+                when the digest was last sent.
+             2. It calculates days elapsed since last run against the configured
+                schedule (every 3 days, starting May 27 2026).
+             3. If a send is due or overdue, a red "Run Now" button appears.
+             4. If a send is not yet due, a green countdown shows days remaining.
+             5. Clicking "Run Now" (or "Send Digest") POSTs to the
+                send-community-digest Edge Function with the current user's JWT.
+             6. On success, the panel refreshes and the new run_at is reflected.
+
+           To automate in the future:
+             Wire a Cloudflare Cron Trigger or GitHub Actions scheduled workflow
+             to POST to the Edge Function URL with a service-role JWT.
+             Change triggered_by to 'cron' in the digest_log insert inside the
+             Edge Function (send-community-digest/index.ts).
+      ═════════════════════════════════════════════════ -->
+      <section class="form-section" id="digest-panel">
+        <h3>Community Digest</h3>
+        <p class="section-desc">
+          Sends a summary email to each approved community contact listing new donation intents
+          received since the last digest. <strong>This is a manual step.</strong> Run it on the
+          configured schedule below. No email is sent automatically.
+        </p>
+
+        <div class="digest-status" id="digest-status-block">
+          <div class="digest-status__loading" id="digest-loading">Loading digest status&hellip;</div>
+
+          <!-- Populated by admin-digest.js once digest_log is read -->
+          <div id="digest-status-content" hidden>
+            <div class="digest-status__meta">
+              <span>Schedule: <strong>every 3 days</strong></span>
+              <span id="digest-last-run"></span>
+              <span id="digest-next-due"></span>
+            </div>
+            <div class="digest-status__actions" style="margin-top:1rem;display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+              <!-- Run Now button: red when overdue, primary when due, hidden when not yet due -->
+              <button type="button" id="digest-run-btn" class="btn" hidden>Send Digest</button>
+              <span id="digest-countdown" class="digest-countdown"></span>
+            </div>
+            <div id="digest-result" class="donation-message" hidden style="margin-top:1rem;"></div>
+          </div>
+        </div>
+
+        <!-- Schedule configuration note -->
+        <p class="field-hint" style="margin-top:1.25rem;">
+          <strong>Schedule started:</strong> May 27, 2026 &mdash;
+          Next send is due every 3 days from the last confirmed run.
+          To change the schedule interval, update the <code>DIGEST_INTERVAL_DAYS</code>
+          constant in <code>assets/js/admin-digest.js</code>.
+        </p>
+      </section>
+
+      <!-- ═══ Developer Test Panel ════════════════════════════════════════════════════════════════════════
            Visible only when ?dev=true is in the URL.
            Lets admins trigger Edge Functions without recreating submissions.
-      ════════════════════════════════════════════════════════════════════════ -->
+      ═══════════════════════════════════════════════════════════════════════ -->
       <section id="dev-test-panel" class="form-section" style="display:none;border:2px dashed var(--color-warning, #d97706);">
         <h3>🧪 Developer Test Panel</h3>
         <p class="section-desc">Only visible at <code>admin.html?dev=true</code>. Use this to test Edge Functions and integrations without creating a real submission.</p>
@@ -156,6 +218,7 @@ PayPal,test@example.com,Test PayPal account</textarea>
 
   <script src="assets/js/auth.js" type="module"></script>
   <script src="assets/js/admin.js" type="module"></script>
+  <script src="assets/js/admin-digest.js" type="module"></script>
   <script src="assets/js/admin-test-panel.js" type="module"></script>
 </body>
 </html>
