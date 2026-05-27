@@ -50,18 +50,20 @@ async function loadAll() {
 }
 
 // ─── Audit Log Helper ─────────────────────────────────────────────────────────────────
-async function logAdminAction({ submissionId, action, communityName, rejectionReasons = null, notes = null }) {
+// Inserts into admin_actions (base table). admin_actions_log is a read-only view.
+// rejection_reason_ids expects an array of UUIDs (the raw IDs, not labels).
+async function logAdminAction({ submissionId, action, rejectionReasonIds = null, notes = null }) {
   const { data: { user } } = await supabase.auth.getUser();
-  const { error } = await supabase.from('admin_actions_log').insert({
-    submission_id:      submissionId,
+  const { error } = await supabase.from('admin_actions').insert({
+    submission_id:        submissionId,
     action,
-    admin_email:        user?.email      ?? null,
-    admin_user_id:      user?.id         ?? null,
-    community_name:     communityName    ?? null,
-    rejection_reasons:  rejectionReasons ?? null,
-    notes:              notes            ?? null,
+    admin_email:          user?.email ?? null,
+    admin_user_id:        user?.id    ?? null,
+    rejection_reason_ids: rejectionReasonIds ?? null,
+    notes:                notes              ?? null,
   });
   if (error) console.error('[admin] logAdminAction:', error);
+  // Re-fire admin:ready so admin-audit-log.js re-queries and re-renders
   document.dispatchEvent(new CustomEvent('admin:ready'));
 }
 
@@ -118,19 +120,13 @@ async function loadSubmissions() {
 }
 
 async function approveSubmission(id) {
-  const submission = submissions.find(s => s.id === id);
-
   const { error } = await supabase
     .from('submissions')
     .update({ status: 'approved', reviewed_at: new Date().toISOString() })
     .eq('id', id);
   if (error) { showToast('Approval failed: ' + error.message, 'error'); return; }
 
-  await logAdminAction({
-    submissionId:  id,
-    action:        'approved',
-    communityName: submission?.community_name ?? null,
-  });
+  await logAdminAction({ submissionId: id, action: 'approved' });
 
   showToast('Submission approved and queued for publication.', 'success');
   await loadSubmissions();
@@ -138,8 +134,6 @@ async function approveSubmission(id) {
 }
 
 async function rejectSubmission(id, reasonIds, notes) {
-  const submission = submissions.find(s => s.id === id);
-
   const { error } = await supabase
     .from('submissions')
     .update({
@@ -151,16 +145,11 @@ async function rejectSubmission(id, reasonIds, notes) {
     .eq('id', id);
   if (error) { showToast('Rejection failed: ' + error.message, 'error'); return; }
 
-  const reasonLabels = reasonIds
-    .map(rid => correctionReasons.find(r => r.id === rid)?.label)
-    .filter(Boolean);
-
   await logAdminAction({
-    submissionId:      id,
-    action:            'rejected',
-    communityName:     submission?.community_name ?? null,
-    rejectionReasons:  reasonLabels.length ? reasonLabels : null,
-    notes:             notes || null,
+    submissionId:        id,
+    action:              'rejected',
+    rejectionReasonIds:  reasonIds.length ? reasonIds : null,
+    notes:               notes || null,
   });
 
   try {
@@ -475,7 +464,6 @@ function formatDate(iso) {
 }
 
 // Toast styles are fully inline — no dependency on any CSS class.
-// success = green, error = red, warning = amber.
 const TOAST_STYLES = {
   base:    'position:relative;min-width:260px;max-width:380px;padding:0.85rem 1.1rem;border-radius:10px;font-size:0.92rem;font-weight:600;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,0.14);pointer-events:auto;',
   success: 'background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;',

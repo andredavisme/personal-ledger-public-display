@@ -7,15 +7,15 @@
  * Renders a scrollable table: Date/Time, Action, Admin, Community, Reasons, Notes.
  */
 
-import { supabase } from './supabase.js';
+import supabase from './supabase.js';
 
 const PANEL_BODY = 'audit-log-panel-body';
 
 function actionBadge(action) {
   const map = {
-    approved:  { cls: 'audit-action--approved',  label: 'Approved' },
-    rejected:  { cls: 'audit-action--rejected',   label: 'Rejected' },
-    resubmitted: { cls: 'audit-action--resubmitted', label: 'Resubmitted' },
+    approved:    { cls: 'audit-action--approved',    label: 'Approved' },
+    rejected:    { cls: 'audit-action--rejected',     label: 'Rejected' },
+    resubmitted: { cls: 'audit-action--resubmitted',  label: 'Resubmitted' },
   };
   const { cls, label } = map[action] ?? { cls: '', label: action };
   return `<span class="audit-action ${cls}">${label}</span>`;
