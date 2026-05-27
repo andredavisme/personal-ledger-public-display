@@ -170,7 +170,6 @@
   margin: 0;
 }
 
-/* Meta row — schedule / last run / next due spans */
 .digest-status__meta {
   display: flex;
   flex-wrap: wrap;
@@ -180,14 +179,12 @@
   margin-bottom: 0.25rem;
 }
 
-/* Separator dots between meta spans */
 .digest-status__meta span + span::before {
   content: '\00B7\0020';
   margin-right: 0.25rem;
   opacity: 0.4;
 }
 
-/* Action row — run button + countdown badge */
 .digest-status__actions {
   display: flex;
   gap: 0.75rem;
@@ -196,7 +193,6 @@
   margin-top: 1rem;
 }
 
-/* Countdown badge — base */
 .digest-countdown {
   display: inline-flex;
   align-items: center;
@@ -206,21 +202,18 @@
   border-radius: 999px;
 }
 
-/* Green state — not yet due */
 .digest-countdown--ok {
   background: #dcfce7;
   color: #15803d;
   border: 1px solid #bbf7d0;
 }
 
-/* Red state — overdue */
 .digest-countdown--overdue {
   background: #fee2e2;
   color: #b91c1c;
   border: 1px solid #fecaca;
 }
 
-/* Result / feedback message */
 .donation-message {
   font-size: 0.92rem;
   font-weight: 600;
@@ -283,7 +276,6 @@
   background: var(--color-surface-alt, #f8fafc);
 }
 
-/* Status badge */
 .donations-status {
   display: inline-block;
   font-size: 0.78rem;
@@ -310,7 +302,6 @@
   color: #b91c1c;
 }
 
-/* Receipt cell */
 .receipt-sent {
   color: #15803d;
   font-size: 0.85rem;
@@ -365,7 +356,6 @@
   background: var(--color-surface-alt, #f8fafc);
 }
 
-/* Action badge */
 .audit-action {
   display: inline-block;
   font-size: 0.78rem;
@@ -392,7 +382,6 @@
   color: #1d4ed8;
 }
 
-/* Rejection reason tags */
 .audit-reason {
   display: inline-block;
   font-size: 0.78rem;
@@ -406,9 +395,88 @@
   white-space: nowrap;
 }
 
-/* Notes text */
 .audit-notes {
   font-size: 0.85rem;
   color: var(--color-text-muted, #475569);
+  font-style: italic;
+}
+
+/* ─── Recognition Wall Panel ─────────────────────────────────────────────────── */
+
+.wall-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.wall-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.wall-table th {
+  background: var(--color-surface-alt, #f1f5f9);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted, #64748b);
+  padding: 0.65rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  white-space: nowrap;
+}
+
+.wall-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  vertical-align: middle;
+  color: var(--color-text, #1e293b);
+  font-size: 0.88rem;
+}
+
+.wall-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.wall-table tbody tr:hover {
+  background: var(--color-surface-alt, #f8fafc);
+}
+
+/* Suppressed rows — dim the entire row */
+.wall-table tbody tr:has(.wall-badge--suppressed) {
+  opacity: 0.55;
+}
+
+.wall-badge {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.wall-badge--visible {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.wall-badge--suppressed {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.wall-badge--featured {
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde68a;
+}
+
+.wall-amount-hidden {
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 0.85rem;
   font-style: italic;
 }

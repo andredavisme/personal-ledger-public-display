@@ -147,6 +147,30 @@
         <div id="donations-panel-body"></div>
       </section>
 
+      <!-- ═══ Recognition Wall Panel ══════════════════════════════════════════════════════
+           Shows all recognition_wall entries across all communities.
+           Admins can:
+             - Suppress a donor entry from the public wall (is_visible = false)
+             - Restore a suppressed entry (is_visible = true)
+             - Mark a donor as featured (featured = true) for callout display
+             - Unfeature a donor (featured = false)
+
+           Suppressing hides the entry from public wall.html without deleting it.
+           Amount column only shows the stated amount if the donor opted in
+           (amount_visible_on_wall = true on the original donation).
+
+           sort_order column exists in the schema for future drag-and-drop reordering
+           but is not managed from this panel yet.
+      ══════════════════════════════════════════════════════════════════════ -->
+      <section class="form-section" id="wall-panel">
+        <h3>Recognition Wall</h3>
+        <p class="section-desc">
+          All donor recognition entries across all communities. Suppress entries to hide them
+          from the public wall without deleting. Feature donors to highlight them on the wall.
+        </p>
+        <div id="wall-panel-body"></div>
+      </section>
+
       <!-- ═══ Admin Audit Log ══════════════════════════════════════════════════════════════
            Shows all approve/reject actions taken by admins, newest first.
            Sourced from public.admin_actions_log — a view joining:
@@ -259,6 +283,7 @@ PayPal,test@example.com,Test PayPal account</textarea>
   <script src="assets/js/admin.js" type="module"></script>
   <script src="assets/js/admin-digest.js" type="module"></script>
   <script src="assets/js/admin-donations.js" type="module"></script>
+  <script src="assets/js/admin-wall.js" type="module"></script>
   <script src="assets/js/admin-audit-log.js" type="module"></script>
   <script src="assets/js/admin-test-panel.js" type="module"></script>
 </body>
