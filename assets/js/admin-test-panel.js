@@ -48,6 +48,24 @@ function parseCSV(text) {
   });
 }
 
+// ─── Delete all rows referencing TEST_UUID across all dependent tables ────────────
+// Order matters: child tables before parent to avoid FK violations.
+async function deleteAllTestRows() {
+  const childTables = [
+    'recognition_wall',
+    'donations',
+    'submission_financials',
+    'submission_budget',
+    'submission_donations',
+  ];
+  for (const table of childTables) {
+    const { error } = await supabase.from(table).delete().eq('submission_id', TEST_UUID);
+    if (error) console.warn(`[test-panel] delete from ${table}:`, error.message);
+  }
+  const { error } = await supabase.from('submissions').delete().eq('id', TEST_UUID);
+  if (error) throw error;
+}
+
 // ─── Send Rejection Email ──────────────────────────────────────────────────────
 document.getElementById('test-rejection-email-btn')?.addEventListener('click', async () => {
   const id = getSubmissionId();
@@ -156,12 +174,13 @@ document.getElementById('test-insert-fixture-btn')?.addEventListener('click', as
 });
 
 // ─── Delete Test Fixture ───────────────────────────────────────────────────────
+// Deletes all dependent rows first (recognition_wall, donations, CSV tables)
+// before removing the core submission to avoid foreign key violations.
 document.getElementById('test-delete-fixture-btn')?.addEventListener('click', async () => {
-  showOutput('⏳ Deleting test submission...', 'fixture-output');
+  showOutput('⏳ Deleting test submission and all dependent rows...', 'fixture-output');
   try {
-    const { error } = await supabase.from('submissions').delete().eq('id', TEST_UUID);
-    if (error) throw error;
-    showOutput(`✅ Test submission ${TEST_UUID} deleted.`, 'fixture-output');
+    await deleteAllTestRows();
+    showOutput(`✅ Test submission ${TEST_UUID} and all dependent rows deleted.`, 'fixture-output');
   } catch (e) {
     showOutput(`❌ Error: ${e.message}`, 'fixture-output');
   }
