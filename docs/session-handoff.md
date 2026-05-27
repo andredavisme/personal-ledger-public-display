@@ -26,6 +26,56 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 27, 2026 — Session 10 (Late Afternoon)
+**Status at close:** Recognition wall admin controls complete and verified end-to-end; suppression now works correctly on the public wall even while viewed from an authenticated browser session
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Built `admin-wall.js` | New admin sub-module listening for `admin:ready`; loads `recognition_wall` rows joined to `submissions.community_name` and `donations.amount`; renders table with donor, community, amount, message, visibility, and featured status |
+| Added Recognition Wall panel to `admin.html` | New `#wall-panel` section inserted between Donation Pledges and Admin Audit Log; `admin-wall.js` script tag added |
+| Added wall admin styles to `admin.css` | Added table wrappers, badges, hidden amount treatment, and suppressed-row visual treatment matching the existing admin pattern |
+| Verified RLS admin update policy | Confirmed `public.recognition_wall` already had admin/moderator `ALL` policy via `profiles.show_role`, so inline visibility / featured updates required no new admin-side policy |
+| Diagnosed admin panel load race | `admin-wall.js` could miss the `admin:ready` event when auth restored quickly from cached session; panel section rendered but entries did not populate reliably |
+| Fixed `admin-wall.js` load race | Added fallback delayed load path so the wall table still renders if `admin:ready` fired before the module listener registered |
+| Verified public wall rendering behavior | Confirmed `wall.html`, `wall.js`, and `wall.css` already supported featured styling, amount visibility, and community grouping correctly |
+| Diagnosed suppress-not-hiding bug | Confirmed admin toggle correctly set `recognition_wall.is_visible = false`, but public wall still displayed the entry because authenticated sessions on `wall.html` bypassed anon-only RLS expectations |
+| Tightened `recognition_wall` read policy | Dropped redundant `Wall readable by all` policy and replaced `auth_read_recognition_wall` to use `USING (is_visible = true)` |
+| Hardened `wall.js` query | Added explicit `.eq('is_visible', true)` to the public wall query so suppressed entries stay hidden regardless of whether the viewer has an active Supabase auth session |
+| Verified suppress flow end-to-end | User confirmed: entry suppresses correctly from admin panel and disappears from `wall.html` after the `wall.js` filter fix |
+
+#### 🟡 Deferred / Decisions Made This Session
+- **Public wall must self-filter** — `wall.js` now enforces `is_visible = true` directly instead of relying solely on RLS, because authenticated admin sessions may be present while viewing a public page
+- **Admin wall uses soft suppression only** — no delete flow added; `is_visible = false` remains the canonical suppression mechanism
+- **Recognition wall feature scope stays simple** — no drag-and-drop `sort_order` UI yet; column remains reserved for future use
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Feature/unfeature visual verification** — suppression path is confirmed; feature path exists and should be spot-checked on `wall.html`
+- [ ] **Public-facing donation transparency page** — still not built
+- [ ] **Digest CSS polish** — verify whether `.digest-countdown--ok` / `.digest-countdown--overdue` styling still needs cleanup in `admin.css`
+- [ ] **Phase 2 recognition wall questions** — broader product decisions from Session 2/5 remain historically open even though the current wall implementation is operational
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+1. **Verify feature toggle on `wall.html`** — confirm featured donors render with intended highlight treatment from the admin panel
+2. **Decide next public-facing transparency work** — donation transparency page is the clearest next feature if moving beyond recognition wall admin tooling
+3. **Check digest panel polish** — confirm whether countdown styling is fully resolved or still needs CSS cleanup
+
+#### 📚 Commits & Migrations This Session
+| Reference | What Changed |
+|---|---|
+| Commit [`2d8bcbb`](https://github.com/andredavisme/personal-ledger-public-display/commit/2d8bcbb5a047dbc6cade835b77c7c89c3aec647a) | feat: admin recognition wall panel — new `admin-wall.js`, `admin.html` panel section, `admin.css` table styles |
+| Commit [`c2dad10`](https://github.com/andredavisme/personal-ledger-public-display/commit/c2dad10541c80d6f1ddca19387f17a92a2554266) | fix: `admin-wall.js` fallback load when `admin:ready` already fired |
+| Commit [`1a59281`](https://github.com/andredavisme/personal-ledger-public-display/commit/1a592811ac0015b7e1789861d8cfeecaa61cd3e5) | fix: `wall.js` explicitly filters `is_visible = true` regardless of auth session |
+| Migration `fix_recognition_wall_rls_visibility` | Dropped `Wall readable by all`; recreated `auth_read_recognition_wall` with `USING (is_visible = true)` |
+
+---
+
 ### 🕒 May 27, 2026 — Session 9 (Afternoon)
 **Status at close:** Admin panel fully functional end-to-end; all CORS items confirmed closed; audit log view created and wired; E2E flow verified green
 
