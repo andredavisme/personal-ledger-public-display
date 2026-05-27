@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Community Ledger — Recognition Wall</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/wall.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <h1>Community Ledger</h1>
+      <nav>
+        <a href="index.html">Submit</a>
+        <a href="community.html">Community Pages</a>
+        <a href="wall.html" class="active">Recognition Wall</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section class="page-intro">
+      <h2>Recognition Wall</h2>
+      <p class="section-desc">Every donor listed here has chosen to be recognized publicly. Communities are ordered from least to most active &mdash; your support helps the communities that need it most rise to the top.</p>
+    </section>
+
+    <div id="wall-loading" class="wall-state">Loading recognition wall&hellip;</div>
+    <div id="wall-empty"   class="wall-state" hidden>
+      <p>No donations have been recorded yet. <a href="community.html">Support a community</a> to be the first on the wall.</p>
+    </div>
+
+    <div id="wall-list"></div>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; 2026 Community Ledger. Donor recognition is opt-in and self-reported.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/wall.js" type="module"></script>
+</body>
+</html>

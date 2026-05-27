@@ -1,0 +1,123 @@
+/* ─── Recognition Wall ───────────────────────────────────────────────────────── */
+
+.wall-state {
+  margin-top: 2rem;
+  color: var(--color-text-muted, #64748b);
+  font-size: 0.95rem;
+}
+
+.wall-state a {
+  color: #4361ee;
+}
+
+/* Community block */
+.wall-community {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.wall-community__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.wall-community__name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 0.2rem;
+}
+
+.wall-community__location {
+  font-size: 0.88rem;
+  color: #64748b;
+}
+
+.wall-community__count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #4361ee;
+  background: #e0e7ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  white-space: nowrap;
+}
+
+/* Entry grid */
+.wall-entries {
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* Individual donor entry */
+.wall-entry {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+}
+
+.wall-entry--featured {
+  background: #fefce8;
+  border-color: #fde68a;
+}
+
+.wall-entry__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.wall-entry__name {
+  font-weight: 600;
+  font-size: 0.97rem;
+  color: #1a1a2e;
+}
+
+.wall-entry__amount {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #15803d;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+}
+
+.wall-entry__message {
+  font-size: 0.9rem;
+  color: #475569;
+  font-style: italic;
+  margin: 0.35rem 0 0.3rem;
+}
+
+.wall-entry__date {
+  display: block;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 720px) {
+  .wall-community__header {
+    flex-direction: column;
+  }
+
+  .wall-community__count {
+    align-self: flex-start;
+  }
+}
