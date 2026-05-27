@@ -1,7 +1,7 @@
 /**
  * admin.js — Administration Page
  *
- * AUTH: Gated via auth.js (Netlify Identity). Invite-only instance — any
+ * AUTH: Gated via auth.js (Supabase Auth). Invite-only instance — any
  * authenticated user is an authorized admin.
  *
  * DATA: Uses the shared supabase.js client which defaults to the ledger
@@ -43,6 +43,13 @@ async function loadAll() {
   await Promise.all([loadReasons(), loadSubmissions()]);
   renderReasonsManager();
   renderPendingSubmissions();
+
+  // Notify other admin modules (e.g. admin-digest.js, admin-test-panel.js)
+  // that authentication is confirmed and the admin UI is fully visible.
+  // Any module that needs to query the DB on behalf of an authenticated admin
+  // should listen for this event rather than running on DOMContentLoaded,
+  // since the auth check is async and the user may not be logged in yet.
+  document.dispatchEvent(new CustomEvent('admin:ready'));
 }
 
 // ─── Correction Reasons ──────────────────────────────────────────────────────
@@ -123,8 +130,8 @@ async function rejectSubmission(id, reasonIds, notes) {
 
   // 2. Call the Edge Function to send the notification email
   try {
-    const session = Auth.getSession ? Auth.getSession() : null;
-    const token   = session?.access_token ?? '';
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? '';
     const res = await fetch(`${EDGE_BASE}/send-rejection-email`, {
       method: 'POST',
       headers: {
