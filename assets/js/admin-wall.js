@@ -4,13 +4,31 @@
  * Listens for admin:ready, loads all recognition_wall rows joined with
  * community name and donation amount. Renders a table with inline toggles
  * for is_visible (suppress/restore) and featured (highlight on wall).
+ *
+ * Race condition guard: if admin:ready fires before this module registers
+ * its listener (cached auth session), we fall back to loading directly
+ * once the DOM is ready and the panel body is present.
  */
 
 import supabase from './supabase.js';
 
+let loaded = false;
+
 document.addEventListener('admin:ready', () => {
+  loaded = true;
   loadWallEntries();
 });
+
+// Fallback: if admin:ready already fired before this listener registered,
+// retry once the event loop clears.
+setTimeout(() => {
+  if (!loaded) {
+    const container = document.getElementById('wall-panel-body');
+    if (container && container.innerHTML.trim() === '') {
+      loadWallEntries();
+    }
+  }
+}, 1500);
 
 async function loadWallEntries() {
   const container = document.getElementById('wall-panel-body');
