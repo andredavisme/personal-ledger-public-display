@@ -222,15 +222,15 @@ function initIntentModal() {
             <div id="intent-error" class="donation-message donation-message--error" hidden></div>
             <form id="intent-form" class="donation-form">
               <label>
-                <span>Display Name (optional — shown on leaderboard)</span>
+                <span>Display Name (optional — shown on recognition wall)</span>
                 <input type="text" name="donor_name" maxlength="120" />
               </label>
               <label>
-                <span>Email (optional — for future updates)</span>
+                <span>Email (optional — for receipt and updates)</span>
                 <input type="email" name="donor_email" maxlength="160" />
               </label>
               <label>
-                <span>Intended Amount (USD)</span>
+                <span>Intended Amount (USD) <span class="donation-form__hint">Suggested minimum: $15.00</span></span>
                 <input type="number" name="amount" min="0.01" step="0.01" required />
               </label>
               <label>
@@ -240,6 +240,10 @@ function initIntentModal() {
               <label class="donation-form__checkbox">
                 <input type="checkbox" name="display_on_wall" />
                 <span>Show my name and message on the recognition wall</span>
+              </label>
+              <label class="donation-form__checkbox">
+                <input type="checkbox" name="amount_visible_on_wall" />
+                <span>Show my donation amount on the recognition wall</span>
               </label>
               <button type="submit" class="btn btn--primary">Log My Intent</button>
             </form>
@@ -298,6 +302,7 @@ function openIntentModal(submissionId, method, paymentEncoded) {
 
   intentFormEl.reset();
   intentFormEl.display_on_wall.checked = false;
+  intentFormEl.amount_visible_on_wall.checked = false;
   document.getElementById('intent-error').hidden = true;
   document.getElementById('intent-form-view').hidden = false;
   intentConfirmEl.hidden = true;
@@ -326,24 +331,26 @@ async function handleIntentSubmit(event) {
   submitBtn.textContent = 'Logging...';
   errorEl.hidden = true;
 
-  const donorName     = intentFormEl.donor_name.value.trim();
-  const donorEmail    = intentFormEl.donor_email.value.trim();
-  const amount        = Number(intentFormEl.amount.value);
-  const wallMessage   = intentFormEl.wall_message.value.trim();
-  const displayOnWall = intentFormEl.display_on_wall.checked;
+  const donorName          = intentFormEl.donor_name.value.trim();
+  const donorEmail         = intentFormEl.donor_email.value.trim();
+  const amount             = Number(intentFormEl.amount.value);
+  const wallMessage        = intentFormEl.wall_message.value.trim();
+  const displayOnWall      = intentFormEl.display_on_wall.checked;
+  const amountVisibleOnWall = intentFormEl.amount_visible_on_wall.checked;
 
   try {
     const { error } = await supabase.from('donations').insert({
-      submission_id:   activeSubmissionId,
-      donor_name:      donorName || null,
-      donor_email:     donorEmail || null,
+      submission_id:          activeSubmissionId,
+      donor_name:             donorName || null,
+      donor_email:            donorEmail || null,
       amount,
-      method:          activeMethod,
-      status:          'self_reported',
-      donation_type:   'intent',
-      weight:          0.250,
-      display_on_wall: displayOnWall,
-      wall_message:    wallMessage || null,
+      method:                 activeMethod,
+      status:                 'self_reported',
+      donation_type:          'intent',
+      weight:                 0.250,
+      display_on_wall:        displayOnWall,
+      amount_visible_on_wall: amountVisibleOnWall,
+      wall_message:           wallMessage || null,
     });
 
     if (error) throw error;
