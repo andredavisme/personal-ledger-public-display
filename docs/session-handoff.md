@@ -26,6 +26,51 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 27, 2026 — Session 8 (Late Morning)
+**Status at close:** Pledge email messaging corrected; admin donations panel live and confirmed with test records
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Updated `send-donation-receipt` email messaging | Changed subject from "Thank you for supporting…" to "Your pledge to [community] has been recorded"; headline now reads "Thank you for your pledge!"; body makes clear pledge ≠ payment; yellow ⚠️ warning box added: "No payment has been made yet"; new green "Complete My Donation →" CTA button links to community page; "Donation Summary" renamed to "Pledge Summary" with "Intended Amount" and "Pledge Recorded" labels; footer disclaimer updated to reflect no confirmed payment |
+| Built `admin-donations.js` | New module — listens for `admin:ready`; loads all donations joined to `submissions.community_name`; renders scrollable table: Date, Donor, Email, Community, Amount, Method, Status, Receipt; Receipt column shows ✅ timestamp if sent, "No email" if no address, amber Resend button if `receipt_sent_at` is null; Resend calls `send-donation-receipt` with admin JWT; replaces button with ✅ on success |
+| Added `#donations-panel` to `admin.html` | Section added after digest panel, before dev test panel; `admin-donations.js` script tag added |
+| Added donations table styles to `admin.css` | `.donations-table`, `.donations-table-wrap`, `.donations-status` status badges (self_reported / verified / rejected), `.receipt-sent`, `.receipt-none`, `btn--warning` (amber Resend button) |
+| Confirmed admin donations panel with live test records | User confirmed panel loaded correctly with test donations |
+
+#### 🟡 Deferred / Decisions Made This Session
+- **Pledge vs. Donation language** — "pledge" is now the canonical term in all donor-facing email copy until payment is confirmed; admin panel retains "Donation Pledges" as section heading
+- **Receipt retry is admin-initiated** — no automatic re-queue; admin sees null `receipt_sent_at` rows and triggers resend manually
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Fix CORS in `send-donation-receipt`** — replace single hardcoded origin with allowlist + dynamic origin reflection for production and localhost/dev origins
+- [ ] **Retest fresh donation from browser with email filled in** — confirm preflight succeeds, POST executes, Gmail receipt arrives, `receipt_sent_at` stamps correctly
+- [ ] **Add admin_actions audit log view in Supabase** — table exists, view not created
+- [ ] **Verify admin UI loads submissions correctly** — pending submissions list still not confirmed against live data
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| `send-donation-receipt` CORS header is hardcoded to production Pages origin | Active blocker for localhost / alternate-origin browser testing; server logic is fine, browser preflight is not |
+| Browser CORS failures produce no function-body logs | Makes the issue easy to confuse with "function not called" unless Network tab / preflight is checked |
+| Donations without `donor_email` intentionally produce no receipt | Not a bug; function returns `{ sent: false, reason: 'no_email' }` |
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+1. **Fix CORS in `send-donation-receipt`** — add allowed origins list (production + localhost variants), reflect `Origin` dynamically, return CORS headers on `OPTIONS` and every response path
+2. **Run a fresh browser donation test with email entered** — verify pledge email delivery with updated messaging and `receipt_sent_at` stamps correctly
+3. **Admin audit log view** — `admin_actions` table exists; create the view
+4. **Verify admin UI loads pending submissions** — confirm against live data
+
+#### 📚 Commits & Deployments This Session
+| Reference | What Changed |
+|---|---|
+| `send-donation-receipt` v7 | Updated pledge messaging, warning box, CTA button, pledge/payment distinction throughout |
+| Commit `bb1bde7` | feat: admin donations panel — `admin-donations.js`, `admin.html` section, `admin.css` styles |
+
+---
+
 ### 🕒 May 27, 2026 — Session 7 (Late Morning)
 **Status at close:** Recognition wall flow working end-to-end; public tutorial now includes CORS guidance; receipt email still blocked from browser due to Edge Function CORS origin mismatch during local/dev-origin testing
 
