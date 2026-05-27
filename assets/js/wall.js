@@ -7,7 +7,9 @@
  * Within each community, entries are ordered by sort_order ASC, then created_at ASC.
  *
  * Display rules (per donation-capture.md Phase 2 spec):
- *   - Only rows where is_visible = true are shown (RLS enforces this for anon reads)
+ *   - Only rows where is_visible = true are shown
+ *   - Filter is applied explicitly in the query so it holds regardless of whether
+ *     the visitor has an active auth session (admin viewing the page while logged in)
  *   - donor amount shown only if amount_visible = true
  *   - wall_message shown if present
  *   - display_name shown always (defaults to 'Anonymous' server-side)
@@ -20,8 +22,6 @@ const emptyEl   = document.getElementById('wall-empty');
 const listEl    = document.getElementById('wall-list');
 
 async function loadWall() {
-  // Fetch all visible wall entries with the donation amount and submission community info.
-  // RLS on recognition_wall already filters to is_visible = true for anon reads.
   const { data, error } = await supabase
     .from('recognition_wall')
     .select(`
@@ -36,6 +36,7 @@ async function loadWall() {
       donations ( amount ),
       submissions ( community_name, location )
     `)
+    .eq('is_visible', true)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 
