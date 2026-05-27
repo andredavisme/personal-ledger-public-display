@@ -3,6 +3,9 @@
  * Activated only when ?dev=true is in the URL.
  * Provides buttons to fire Edge Functions without creating a real submission.
  * Also provides a Test Data Manager to insert/delete a fixture submission.
+ *
+ * After insert or delete, dispatches 'testpanel:changed' on document so that
+ * admin.js can re-run loadAll() without a full page reload.
  */
 
 import Auth from './auth.js';
@@ -46,6 +49,11 @@ function parseCSV(text) {
     headers.forEach((h, i) => { row[h] = values[i] || ''; });
     return row;
   });
+}
+
+// Notify admin.js to re-run loadAll() without a full page reload
+function notifyAdminReload() {
+  document.dispatchEvent(new CustomEvent('testpanel:changed'));
 }
 
 // ─── Delete all rows referencing TEST_UUID across all dependent tables ────────────
@@ -109,8 +117,6 @@ document.getElementById('test-load-submission-btn')?.addEventListener('click', a
 });
 
 // ─── Insert Test Fixture ───────────────────────────────────────────────────────
-// Uses upsert (onConflict: 'id') so the fixture can be re-inserted at any time
-// without a prior delete, even if the record already exists with a different status.
 document.getElementById('test-insert-fixture-btn')?.addEventListener('click', async () => {
   showOutput('⏳ Preparing test fixture...', 'fixture-output');
   try {
@@ -119,13 +125,11 @@ document.getElementById('test-insert-fixture-btn')?.addEventListener('click', as
     const budgetRows    = parseCSV(document.getElementById('fixture-budget').value);
     const donationRows  = parseCSV(document.getElementById('fixture-donations').value);
 
-    // Upsert core submission — overwrites existing record if UUID already exists
     const { error: coreErr } = await supabase
       .from('submissions')
       .upsert({ ...core, id: TEST_UUID, status: 'pending' }, { onConflict: 'id' });
     if (coreErr) throw coreErr;
 
-    // Delete and re-insert CSV child rows to keep them fresh
     await Promise.all([
       supabase.from('submission_financials').delete().eq('submission_id', TEST_UUID),
       supabase.from('submission_budget').delete().eq('submission_id', TEST_UUID),
@@ -168,19 +172,19 @@ document.getElementById('test-insert-fixture-btn')?.addEventListener('click', as
     if (idField) idField.value = TEST_UUID;
 
     showOutput(`✅ Test submission inserted.\nUUID: ${TEST_UUID}\nThe Submission ID field above has been auto-filled.`, 'fixture-output');
+    notifyAdminReload();
   } catch (e) {
     showOutput(`❌ Error: ${e.message}\n\n${JSON.stringify(e, null, 2)}`, 'fixture-output');
   }
 });
 
 // ─── Delete Test Fixture ───────────────────────────────────────────────────────
-// Deletes all dependent rows first (recognition_wall, donations, CSV tables)
-// before removing the core submission to avoid foreign key violations.
 document.getElementById('test-delete-fixture-btn')?.addEventListener('click', async () => {
   showOutput('⏳ Deleting test submission and all dependent rows...', 'fixture-output');
   try {
     await deleteAllTestRows();
     showOutput(`✅ Test submission ${TEST_UUID} and all dependent rows deleted.`, 'fixture-output');
+    notifyAdminReload();
   } catch (e) {
     showOutput(`❌ Error: ${e.message}`, 'fixture-output');
   }

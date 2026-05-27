@@ -13,7 +13,7 @@ import supabase from './supabase.js';
 
 const EDGE_BASE = 'https://hhyhulqngdkwsxhymmcd.supabase.co/functions/v1';
 
-// ─── Auth Gate ────────────────────────────────────────────────────────────────
+// ─── Auth Gate ─────────────────────────────────────────────────────────────────────
 const authGate  = document.getElementById('auth-gate');
 const adminUI   = document.getElementById('admin-ui');
 const loginBtn  = document.getElementById('login-btn');
@@ -34,25 +34,25 @@ loginBtn.addEventListener('click',  () => Auth.login());
 logoutBtn.addEventListener('click', () => Auth.logout());
 Auth.initAuth();
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// Re-run loadAll() when the test panel inserts or deletes a fixture
+document.addEventListener('testpanel:changed', () => loadAll());
+
+// ─── State ─────────────────────────────────────────────────────────────────────────
 let correctionReasons = [];
 let submissions       = [];
 
-// ─── Load All Data ────────────────────────────────────────────────────────────
+// ─── Load All Data ─────────────────────────────────────────────────────────────────
 async function loadAll() {
   await Promise.all([loadReasons(), loadSubmissions()]);
   renderReasonsManager();
   renderPendingSubmissions();
 
-  // Notify other admin modules (e.g. admin-digest.js, admin-test-panel.js)
+  // Notify other admin modules (e.g. admin-digest.js, admin-audit-log.js)
   // that authentication is confirmed and the admin UI is fully visible.
-  // Any module that needs to query the DB on behalf of an authenticated admin
-  // should listen for this event rather than running on DOMContentLoaded,
-  // since the auth check is async and the user may not be logged in yet.
   document.dispatchEvent(new CustomEvent('admin:ready'));
 }
 
-// ─── Correction Reasons ──────────────────────────────────────────────────────
+// ─── Correction Reasons ──────────────────────────────────────────────────────────────
 async function loadReasons() {
   const { data, error } = await supabase
     .from('correction_reasons')
@@ -80,7 +80,7 @@ async function addReason(label, description) {
   correctionReasons.push(data);
 }
 
-// ─── Submissions ─────────────────────────────────────────────────────────────
+// ─── Submissions ────────────────────────────────────────────────────────────────────
 async function loadSubmissions() {
   const { data, error } = await supabase
     .from('submissions_with_collision')
@@ -116,7 +116,6 @@ async function approveSubmission(id) {
 }
 
 async function rejectSubmission(id, reasonIds, notes) {
-  // 1. Update the submission status in the DB
   const { error } = await supabase
     .from('submissions')
     .update({
@@ -128,7 +127,6 @@ async function rejectSubmission(id, reasonIds, notes) {
     .eq('id', id);
   if (error) { showToast('Rejection failed: ' + error.message, 'error'); return; }
 
-  // 2. Call the Edge Function to send the notification email
   try {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token ?? '';
@@ -169,7 +167,7 @@ async function linkSubmissions(sourceId, targetRef) {
   renderPendingSubmissions();
 }
 
-// ─── CSV Table Renderer ───────────────────────────────────────────────────────
+// ─── CSV Table Renderer ─────────────────────────────────────────────────────────────────
 function renderCSVTable(rows) {
   if (!rows || rows.length === 0) return '<p class="field-hint">No data provided.</p>';
   const headers = Object.keys(rows[0]).filter(h => !['id','submission_id','sort_order'].includes(h));
@@ -186,7 +184,7 @@ function renderCSVTable(rows) {
     </div>`;
 }
 
-// ─── Collision Alert Banner ──────────────────────────────────────────────────
+// ─── Collision Alert Banner ────────────────────────────────────────────────────────────
 function buildCollisionBanner(s) {
   if (!s.reference_collision) return '';
   const siblings = submissions
@@ -201,7 +199,7 @@ function buildCollisionBanner(s) {
     </div>`;
 }
 
-// ─── Link Records Panel ──────────────────────────────────────────────────────
+// ─── Link Records Panel ──────────────────────────────────────────────────────────────
 function buildLinkPanel(s) {
   const otherRefs = [...new Set(
     submissions
@@ -230,7 +228,7 @@ function buildLinkPanel(s) {
     </details>`;
 }
 
-// ─── Submission Renderer ──────────────────────────────────────────────────────
+// ─── Submission Renderer ────────────────────────────────────────────────────────────────
 const submissionsContainer = document.getElementById('pending-submissions');
 
 function renderPendingSubmissions() {
@@ -316,7 +314,7 @@ function renderPendingSubmissions() {
   });
 }
 
-// ─── Correction Reasons UI ────────────────────────────────────────────────────
+// ─── Correction Reasons UI ────────────────────────────────────────────────────────────────
 const reasonsManager         = document.getElementById('reasons-manager');
 const reasonForm             = document.getElementById('reason-form');
 const reasonLabelInput       = document.getElementById('reason-label');
@@ -394,7 +392,7 @@ reasonsManager.addEventListener('click', async e => {
   renderPendingSubmissions();
 });
 
-// ─── Submissions Actions ──────────────────────────────────────────────────────
+// ─── Submissions Actions ────────────────────────────────────────────────────────────────
 submissionsContainer.addEventListener('click', async e => {
   const approveBtn = e.target.closest('[data-approve]');
   if (approveBtn) {
@@ -425,7 +423,7 @@ submissionsContainer.addEventListener('click', async e => {
   }
 });
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────────────
 function escHtml(str) {
   if (str == null) return '';
   return String(str)
