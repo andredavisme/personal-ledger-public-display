@@ -21,6 +21,9 @@ let activeMethod       = null;
 let activePaymentData  = null;  // { type, handle, submissionId } — resolved to URL at confirm time
 let communityLookup = new Map();
 
+const SUPABASE_URL = 'https://hhyhulqngdkwsxhymmcd.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_haKvwV0M7KMj4Qz69M6WGg_KmIfU-aI';
+
 initIntentModal();
 
 // ─── Load Data ────────────────────────────────────────────────────────────────
@@ -331,15 +334,15 @@ async function handleIntentSubmit(event) {
   submitBtn.textContent = 'Logging...';
   errorEl.hidden = true;
 
-  const donorName          = intentFormEl.donor_name.value.trim();
-  const donorEmail         = intentFormEl.donor_email.value.trim();
-  const amount             = Number(intentFormEl.amount.value);
-  const wallMessage        = intentFormEl.wall_message.value.trim();
-  const displayOnWall      = intentFormEl.display_on_wall.checked;
+  const donorName           = intentFormEl.donor_name.value.trim();
+  const donorEmail          = intentFormEl.donor_email.value.trim();
+  const amount              = Number(intentFormEl.amount.value);
+  const wallMessage         = intentFormEl.wall_message.value.trim();
+  const displayOnWall       = intentFormEl.display_on_wall.checked;
   const amountVisibleOnWall = intentFormEl.amount_visible_on_wall.checked;
 
   try {
-    const { error } = await supabase.from('donations').insert({
+    const { data: inserted, error } = await supabase.from('donations').insert({
       submission_id:          activeSubmissionId,
       donor_name:             donorName || null,
       donor_email:            donorEmail || null,
@@ -351,9 +354,34 @@ async function handleIntentSubmit(event) {
       display_on_wall:        displayOnWall,
       amount_visible_on_wall: amountVisibleOnWall,
       wall_message:           wallMessage || null,
-    });
+    }).select('id').single();
 
     if (error) throw error;
+
+    // ── Call send-donation-receipt Edge Function ──────────────────────────────
+    // Non-blocking: receipt/wall insert failure does not prevent the
+    // confirmation screen from showing. Errors are logged to console only.
+    if (inserted?.id) {
+      fetch(
+        `${SUPABASE_URL}/functions/v1/send-donation-receipt`,
+        {
+          method:  'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ donation_id: inserted.id }),
+        }
+      ).then(async res => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json.ok === false) {
+          console.warn('[community] send-donation-receipt non-OK response:', json);
+        }
+      }).catch(err => {
+        console.error('[community] send-donation-receipt fetch error:', err);
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Build payment button now that we have the amount
     const paymentEl = document.getElementById('intent-confirm-payment');
