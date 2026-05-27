@@ -26,6 +26,58 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 27, 2026 — Session 6 (Morning)
+**Status at close:** Phase 2 digest infrastructure complete — digest panel live in admin UI; `admin:ready` event wired; session token bug fixed in rejection flow
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Updated donation intent form | Added `amount_visible_on_wall` checkbox (opt-in, unchecked by default); added "Suggested minimum: $15.00" hint; `openIntentModal()` resets field on each open; `handleIntentSubmit()` passes field to DB |
+| Deployed `send-community-digest` v1 | Initial deploy — bi-monthly digest to approved community contacts; groups donations by `submission_id`; skips communities with no activity |
+| Created `public.digest_log` table | Stores `run_at`, `triggered_by`, `communities_notified`, `communities_skipped`, `notes`; RLS locked to authenticated admins; powers admin panel countdown |
+| Deployed `send-community-digest` v2 | Added `digest_log` insert on every real send; added `dry_run` support (builds emails, skips send and log); schedule default updated to 3-day window; heavily commented with rationale for manual-trigger design and path to automate |
+| Built digest control panel in `admin.html` | New `#digest-panel` section with inline HTML comments explaining manual-trigger philosophy, how countdown works, and how to automate in the future |
+| Built `admin-digest.js` | Reads `digest_log` on `admin:ready`; calculates days until next send at 3-day interval from `DIGEST_START_DATE = 2026-05-27`; shows green countdown when not due; shows red "Run Now" button when overdue; "Send Early" always available; reloads panel after successful send |
+| Fixed `admin:ready` event — `admin.js` | `loadAll()` now dispatches `CustomEvent('admin:ready')` after auth confirmed and data loaded; digest panel and future sub-modules depend on this event |
+| Fixed session token bug — `admin.js` | `rejectSubmission()` was calling non-existent `Auth.getSession()` and falling back to empty token; replaced with `supabase.auth.getSession()` — consistent with digest and receipt handlers |
+
+#### 🟡 Deferred / Decisions Made This Session
+- **Digest schedule:** Every 3 days starting May 27, 2026 — hardcoded in `DIGEST_INTERVAL_DAYS` constant in `admin-digest.js`
+- **Manual trigger confirmed:** No cron job — human admin runs digest from panel; path to automate documented in comments
+- **Digest `since` window:** Defaults to 3 days ago in Edge Function; can be overridden via POST body `{ since: 'ISO date' }`
+- **Dry run available:** POST `{ dry_run: true }` to preview digest without sending or logging
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Recognition wall page** — global public wall; donors ordered by community activity ascending; `display_on_wall` + `wall_message` fields already in schema
+- [ ] **Admin donations panel** — surface all donations with status, `receipt_sent_at`, retry trigger for NULL receipts
+- [ ] **Add admin_actions audit log view in Supabase** — table exists, view not created
+- [ ] **Verify admin UI loads submissions correctly** — pending submissions list not confirmed against live data
+- [ ] **Add CSS for digest panel** — `.digest-status`, `.digest-countdown--ok`, `.digest-countdown--overdue` classes referenced in JS but not yet styled in `admin.css`
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+| Only 1 test submission in DB — no real approved submissions yet | community.html renders correctly but appears empty to real visitors |
+| `digest_log` has no rows yet | First real digest run will populate it; panel falls back to `DIGEST_START_DATE` as baseline until then |
+
+#### 📍 Where to Resume
+1. **Add CSS for digest panel** — `.digest-countdown--ok` (green) and `.digest-countdown--overdue` (red) need styles in `admin.css`; `#digest-panel` layout may need minor polish
+2. **Recognition wall page** — next major Phase 2 feature; `display_on_wall` + `wall_message` already in schema
+3. **Admin donations panel** — surface donation records, `receipt_sent_at` status, retry button for NULL receipts
+4. **Admin audit log view** — `admin_actions` table exists; create the view
+
+#### 📚 Commits & Deployments This Session
+| Reference | What Changed |
+|---|---|
+| Commit `ed80ab7` | feat: digest panel in `admin.html` + `admin-digest.js` |
+| Commit `4cc670c` | fix: `admin:ready` event dispatch + session token fix in `admin.js` |
+| `send-community-digest` v2 | Added `digest_log` insert, `dry_run` support, 3-day default window, heavy comments |
+| Migration `create_digest_log_table` | New `public.digest_log` table with RLS |
+
+---
+
 ### 🕒 May 26, 2026 — Session 5 (Evening)
 **Status at close:** Both edge functions fully tested end-to-end with live Gmail; SMTP formatting bug fixed in both functions; test data cleared
 
