@@ -26,6 +26,61 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 27, 2026 — Session 7 (Late Morning)
+**Status at close:** Recognition wall flow working end-to-end; public tutorial now includes CORS guidance; receipt email still blocked from browser due to Edge Function CORS origin mismatch during local/dev-origin testing
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Diagnosed donation receipt trigger gap | Reviewed `assets/js/community.js` and confirmed `handleIntentSubmit()` inserted into `public.donations` but never called `send-donation-receipt` |
+| Fixed browser trigger in `community.js` | Added non-blocking `fetch()` POST to `send-donation-receipt` after successful insert; passes `donation_id`; confirmation UI still shows even if receipt/wall follow-up fails |
+| Backfilled orphaned recognition wall rows | Inserted missing `recognition_wall` rows for two test donations with `display_on_wall = true`; confirmed both now render on `wall.html` |
+| Added DB safeguard for wall upsert | Added `UNIQUE` constraint on `public.recognition_wall(donation_id)` so Edge Function upsert on `donation_id` works correctly going forward |
+| Verified recognition wall display | User confirmed both historical test donations now appear on the public wall page |
+| Diagnosed missing receipt email | Retrieved Edge Function logs and verified `send-donation-receipt` had not been invoked from browser tests; only unrelated function traffic appeared in logs |
+| Inspected `send-donation-receipt` source | Confirmed logic already handles `donor_email IS NULL` by returning `{ ok: true, sent: false, reason: 'no_email' }`; email path itself is valid |
+| Identified root blocker as CORS mismatch | Function hardcodes `Access-Control-Allow-Origin: https://personal-ledger-public-display.pages.dev`; this blocks `localhost` / preview-origin browser calls before POST executes |
+| Added tutorial doc `02b-cors-and-browser-security.md` | New tutorial inserted early in sequence to explain origins, preflight `OPTIONS`, exact-match origin rules, local-dev pitfalls, troubleshooting pattern, and recommended dynamic-origin allowlist approach |
+| Scanned repo docs for CORS references | No documentation in this repo previously mentioned CORS; new tutorial closes that gap |
+
+#### 🟡 Deferred / Decisions Made This Session
+- **Recognition wall is now canonical Phase 2 path** — wall insert should happen inside `send-donation-receipt` and remain retry-safe via `upsert(onConflict: 'donation_id')`
+- **Browser receipt trigger remains non-blocking** — `community.js` should not block donor confirmation UI on downstream email or wall issues
+- **CORS should be documented early** — added to tutorial before further workflow expansion so future function work starts with browser-origin awareness
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Fix CORS in `send-donation-receipt`** — replace single hardcoded origin with an allowlist + dynamic origin reflection for production and localhost/dev origins
+- [ ] **Retest fresh donation from browser with email filled in** — confirm preflight succeeds, POST executes, Gmail receipt arrives, and `receipt_sent_at` stamps correctly
+- [ ] **Admin donations panel** — surface all donations with status, `receipt_sent_at`, and retry trigger for failed/null receipts
+- [ ] **Add admin_actions audit log view in Supabase** — table exists, view not created
+- [ ] **Verify admin UI loads submissions correctly** — pending submissions list still not fully confirmed against live data
+- [ ] **Add CSS for digest panel** — `.digest-status`, `.digest-countdown--ok`, `.digest-countdown--overdue` classes still need styling in `admin.css`
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| `send-donation-receipt` CORS header is hardcoded to production Pages origin | Active blocker for localhost / alternate-origin browser testing; server logic is fine, browser preflight is not |
+| Browser CORS failures produce no function-body logs | Makes the issue easy to confuse with "function not called" unless Network tab / preflight is checked |
+| Donations without `donor_email` intentionally produce no receipt | Not a bug; function returns `{ sent: false, reason: 'no_email' }` |
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+1. **Update `send-donation-receipt` CORS handling** — add allowed origins list (production + localhost variants), reflect `Origin` dynamically, and return CORS headers on `OPTIONS` plus every response path
+2. **Run a fresh browser donation test with email entered** — verify receipt email delivery and `receipt_sent_at`
+3. **Build admin donations panel** — include retry path for failed/null receipts and visibility into donation records
+4. **Style digest panel** — small cleanup item still open in `admin.css`
+5. **Create admin audit log view** — complete the admin-side observability work
+
+#### 📚 Commits & Deployments This Session
+| Reference | What Changed |
+|---|---|
+| Commit `125032c` | Fix: `community.js` now calls `send-donation-receipt` after donation insert |
+| Migration `backfill_recognition_wall_orphaned_donations` | Backfilled orphaned wall rows; added unique constraint on `recognition_wall(donation_id)` |
+| Commit `b50d945` | Docs: added `docs/tutorial/02b-cors-and-browser-security.md` |
+
+---
+
 ### 🕒 May 27, 2026 — Session 6 (Morning)
 **Status at close:** Phase 2 digest infrastructure complete — digest panel live in admin UI; `admin:ready` event wired; session token bug fixed in rejection flow
 
@@ -278,5 +333,3 @@ At the beginning of every new thread or work session:
 - [ ] Seed correction_reasons table
 - [ ] Confirm community.js is DB-driven
 - [ ] Donation capture — not yet scoped
-
----
