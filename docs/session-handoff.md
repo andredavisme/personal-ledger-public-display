@@ -26,6 +26,55 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 27, 2026 — Session 9 (Afternoon)
+**Status at close:** Admin panel fully functional end-to-end; all CORS items confirmed closed; audit log view created and wired; E2E flow verified green
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Confirmed CORS items closed (carried from Sessions 7–8) | Reviewed `send-donation-receipt` v7 source — `ALLOWED_ORIGINS` set covers `pages.dev`, `localhost:3000`, `localhost:5500`, `127.0.0.1:5500`, `localhost:8080`; `getCorsHeaders()` reflects incoming origin dynamically; `OPTIONS` handler returns 204; all response paths use `jsonResponse()`. CORS fix was already applied in Session 8 v7 deploy. |
+| Confirmed receipt emails sending correctly (carried from Session 8) | User confirmed in-session — emails send appropriately; `receipt_sent_at` stamps correctly |
+| Created `public.admin_actions_log` view | Joins `admin_actions` to `submissions` (for `community_name`) and expands `rejection_reason_ids` UUID array to readable labels via `correction_reasons`; ordered by `acted_at DESC`; migration applied |
+| Fixed `admin-audit-log.js` import error | Changed `import { supabase }` → `import supabase` (default import matching `supabase.js` export) |
+| Fixed `admin.js` `logAdminAction()` | Was inserting into the view; corrected to insert into `admin_actions` base table with correct column names (`rejection_reason_ids` as UUID array, no `community_name`) |
+| Toast inline styles carried forward | Confirmed working after fixes |
+| Verified full admin E2E flow | Approve → toast visible; audit log populates instantly; pending submissions load correctly; test fixture insert/delete with soft reload confirmed |
+
+#### ✅ CORS Items — Now Fully Closed
+| Item | Status |
+|---|---|
+| CORS fixed in `send-donation-receipt` (v7) | ✅ Closed |
+| Pledge email messaging corrected (v7) | ✅ Closed |
+| Receipt emails confirmed sending appropriately | ✅ Closed |
+
+#### 🟡 Deferred / Decisions Made This Session
+- No new deferrals — session completed all targeted open items
+
+#### 🟠 Open Items Carried Forward
+- None from this session's targeted work. All admin panel and CORS items are closed.
+
+> ℹ️ Future sessions may open new items. See Phase 2 recognition wall questions deferred since Session 2 (in Session 5 entry below) if further feature work is desired.
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+No active open items. Possible next directions:
+1. **Phase 2 recognition wall** — `display_on_wall` + `wall_message` in schema; open questions from Session 2 still pending decisions
+2. **Public-facing donation transparency page** — surface how donations are applied
+3. **Admin digest CSS polish** — minor; `.digest-countdown--ok` / `.digest-countdown--overdue` styling (noted as open in Session 8 but not explicitly resolved — verify in admin.css)
+
+#### 📚 Commits & Deployments This Session
+| Reference | What Changed |
+|---|---|
+| Commit [`5f6be5b`](https://github.com/andredavisme/personal-ledger-public-display/commit/5f6be5bf89a9a1da741dd95b18188c9dbf133be0) | Fix: `admin-audit-log.js` default import; `admin.js` `logAdminAction()` inserts to base table; toast styles carried forward |
+| Migration (this session) | `CREATE OR REPLACE VIEW public.admin_actions_log` — joins `admin_actions` → `submissions` → `correction_reasons` |
+
+---
+
 ### 🕒 May 27, 2026 — Session 8 (Late Morning)
 **Status at close:** Pledge email messaging corrected; admin donations panel live and confirmed with test records
 
