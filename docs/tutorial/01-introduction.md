@@ -43,6 +43,18 @@ Before we write a single line of code, it is worth naming the values that shaped
 
 This tutorial was built with the help of an AI assistant. You may also choose to use one as you work through it. Before you do, it is important to understand exactly what that means.
 
+### Before We Get Technical — A Human Framing
+
+It makes sense that people have concerns about AI. We live in a world shaped by communities, cultures, storytelling, and human creativity. When a new technology appears that seems powerful, unfamiliar, and even a little magical, people naturally start asking what it means for us. AI can feel intimidating because, to a lot of people, it looks like something almost beyond explanation.
+
+But one of the best ways to understand AI is to frame it in a way that does not dismiss those concerns — while still making it easier to think clearly about.
+
+At the broadest level, AI is a tool. A human interacts with a tool, gives it input, and the tool produces a result. The important part is that the result is not created by the tool alone, and it is not created by the human alone — it is created through the interaction between the two.
+
+When we look more closely at language-based AI — the kind used in this tutorial — we can see how it works. These systems are trained on large amounts of human language and other information. They use pattern recognition to identify relationships in that data and generate responses based on those patterns. That means AI is not "thinking" the way a person thinks. It is processing information, recognizing patterns, and producing outputs that can appear intelligent because they are built from vast amounts of human-generated knowledge.
+
+That distinction matters. A lot of the concern around AI comes from imagining it as something mysterious, unstoppable, or completely separate from human input. In reality, AI depends on human-created data, human-defined goals, and human oversight. It is powerful — but it is still a system built and guided by people.
+
 ### AI as a Tool for Human-Directed Tasks
 
 Imagine a power drill. A power drill is a tool. It does not decide what to build. It does not know whether the wall you are drilling into is load-bearing or decorative. It does not care whether the shelf you are mounting will hold books or fall on someone.
