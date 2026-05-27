@@ -46,28 +46,22 @@ async function loadAll() {
   await Promise.all([loadReasons(), loadSubmissions()]);
   renderReasonsManager();
   renderPendingSubmissions();
-
-  // Notify other admin modules (e.g. admin-digest.js, admin-audit-log.js)
-  // that authentication is confirmed and the admin UI is fully visible.
   document.dispatchEvent(new CustomEvent('admin:ready'));
 }
 
 // ─── Audit Log Helper ─────────────────────────────────────────────────────────────────
-// Inserts a row into admin_actions_log and re-fires admin:ready so the
-// audit log panel refreshes without a full page reload.
 async function logAdminAction({ submissionId, action, communityName, rejectionReasons = null, notes = null }) {
   const { data: { user } } = await supabase.auth.getUser();
   const { error } = await supabase.from('admin_actions_log').insert({
     submission_id:      submissionId,
     action,
-    admin_email:        user?.email        ?? null,
-    admin_user_id:      user?.id           ?? null,
-    community_name:     communityName      ?? null,
-    rejection_reasons:  rejectionReasons   ?? null,
-    notes:              notes              ?? null,
+    admin_email:        user?.email      ?? null,
+    admin_user_id:      user?.id         ?? null,
+    community_name:     communityName    ?? null,
+    rejection_reasons:  rejectionReasons ?? null,
+    notes:              notes            ?? null,
   });
   if (error) console.error('[admin] logAdminAction:', error);
-  // Re-fire admin:ready so admin-audit-log.js re-queries and re-renders
   document.dispatchEvent(new CustomEvent('admin:ready'));
 }
 
@@ -157,7 +151,6 @@ async function rejectSubmission(id, reasonIds, notes) {
     .eq('id', id);
   if (error) { showToast('Rejection failed: ' + error.message, 'error'); return; }
 
-  // Expand reason IDs to labels for the audit log
   const reasonLabels = reasonIds
     .map(rid => correctionReasons.find(r => r.id === rid)?.label)
     .filter(Boolean);
@@ -481,17 +474,26 @@ function formatDate(iso) {
   return new Date(iso).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+// Toast styles are fully inline — no dependency on any CSS class.
+// success = green, error = red, warning = amber.
+const TOAST_STYLES = {
+  base:    'position:relative;min-width:260px;max-width:380px;padding:0.85rem 1.1rem;border-radius:10px;font-size:0.92rem;font-weight:600;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,0.14);pointer-events:auto;',
+  success: 'background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;',
+  error:   'background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;',
+  warning: 'background:#fef9c3;color:#854d0e;border:1px solid #fde68a;',
+};
+
 function showToast(message, type = 'success') {
   let container = document.getElementById('toast-container');
   if (!container) {
     container = document.createElement('div');
     container.id = 'toast-container';
-    container.style.cssText = 'position:fixed;bottom:var(--space-6);right:var(--space-6);z-index:9999;display:flex;flex-direction:column;gap:var(--space-2);';
+    container.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;pointer-events:none;';
     document.body.appendChild(container);
   }
   const toast = document.createElement('div');
-  toast.className = `notice notice--${type === 'error' ? 'warning' : 'success'} toast`;
-  toast.style.cssText = 'min-width:260px;max-width:380px;box-shadow:var(--shadow-lg);animation:fadeInUp 200ms ease;';
+  const variant = TOAST_STYLES[type] ?? TOAST_STYLES.success;
+  toast.style.cssText = TOAST_STYLES.base + variant;
   toast.textContent = message;
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
