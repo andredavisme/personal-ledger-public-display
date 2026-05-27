@@ -135,6 +135,15 @@
   background: #991b1b;
 }
 
+.btn--warning {
+  background: #d97706;
+  color: #fff;
+}
+
+.btn--warning:hover {
+  background: #b45309;
+}
+
 .btn--small {
   padding: 0.55rem 0.9rem;
   font-size: 0.85rem;
@@ -230,4 +239,85 @@
   background: #fee2e2;
   color: #b91c1c;
   border: 1px solid #fecaca;
+}
+
+/* ─── Donations Panel ────────────────────────────────────────────────────────── */
+
+.donations-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.donations-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.donations-table th {
+  background: var(--color-surface-alt, #f1f5f9);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted, #64748b);
+  padding: 0.65rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  white-space: nowrap;
+}
+
+.donations-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  vertical-align: middle;
+  color: var(--color-text, #1e293b);
+}
+
+.donations-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.donations-table tbody tr:hover {
+  background: var(--color-surface-alt, #f8fafc);
+}
+
+/* Status badge */
+.donations-status {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  text-transform: lowercase;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.donations-status--self_reported {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.donations-status--verified {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.donations-status--rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Receipt cell */
+.receipt-sent {
+  color: #15803d;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.receipt-none {
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 0.85rem;
 }
