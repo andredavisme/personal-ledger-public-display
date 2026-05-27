@@ -52,6 +52,25 @@ async function loadAll() {
   document.dispatchEvent(new CustomEvent('admin:ready'));
 }
 
+// ─── Audit Log Helper ─────────────────────────────────────────────────────────────────
+// Inserts a row into admin_actions_log and re-fires admin:ready so the
+// audit log panel refreshes without a full page reload.
+async function logAdminAction({ submissionId, action, communityName, rejectionReasons = null, notes = null }) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase.from('admin_actions_log').insert({
+    submission_id:      submissionId,
+    action,
+    admin_email:        user?.email        ?? null,
+    admin_user_id:      user?.id           ?? null,
+    community_name:     communityName      ?? null,
+    rejection_reasons:  rejectionReasons   ?? null,
+    notes:              notes              ?? null,
+  });
+  if (error) console.error('[admin] logAdminAction:', error);
+  // Re-fire admin:ready so admin-audit-log.js re-queries and re-renders
+  document.dispatchEvent(new CustomEvent('admin:ready'));
+}
+
 // ─── Correction Reasons ──────────────────────────────────────────────────────────────
 async function loadReasons() {
   const { data, error } = await supabase
@@ -105,17 +124,28 @@ async function loadSubmissions() {
 }
 
 async function approveSubmission(id) {
+  const submission = submissions.find(s => s.id === id);
+
   const { error } = await supabase
     .from('submissions')
     .update({ status: 'approved', reviewed_at: new Date().toISOString() })
     .eq('id', id);
   if (error) { showToast('Approval failed: ' + error.message, 'error'); return; }
+
+  await logAdminAction({
+    submissionId:  id,
+    action:        'approved',
+    communityName: submission?.community_name ?? null,
+  });
+
   showToast('Submission approved and queued for publication.', 'success');
   await loadSubmissions();
   renderPendingSubmissions();
 }
 
 async function rejectSubmission(id, reasonIds, notes) {
+  const submission = submissions.find(s => s.id === id);
+
   const { error } = await supabase
     .from('submissions')
     .update({
@@ -126,6 +156,19 @@ async function rejectSubmission(id, reasonIds, notes) {
     })
     .eq('id', id);
   if (error) { showToast('Rejection failed: ' + error.message, 'error'); return; }
+
+  // Expand reason IDs to labels for the audit log
+  const reasonLabels = reasonIds
+    .map(rid => correctionReasons.find(r => r.id === rid)?.label)
+    .filter(Boolean);
+
+  await logAdminAction({
+    submissionId:      id,
+    action:            'rejected',
+    communityName:     submission?.community_name ?? null,
+    rejectionReasons:  reasonLabels.length ? reasonLabels : null,
+    notes:             notes || null,
+  });
 
   try {
     const { data: { session } } = await supabase.auth.getSession();
