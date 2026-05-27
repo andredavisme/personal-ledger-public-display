@@ -147,6 +147,24 @@
         <div id="donations-panel-body"></div>
       </section>
 
+      <!-- ═══ Admin Audit Log ══════════════════════════════════════════════════════════════
+           Shows all approve/reject actions taken by admins, newest first.
+           Sourced from public.admin_actions_log — a view joining:
+             - public.admin_actions (immutable audit table)
+             - public.submissions (for community_name)
+             - public.correction_reasons (to expand rejection_reason_ids into labels)
+
+           This panel is read-only. No actions can be taken from here.
+      ══════════════════════════════════════════════════════════════════════ -->
+      <section class="form-section" id="audit-log-panel">
+        <h3>Admin Audit Log</h3>
+        <p class="section-desc">
+          Immutable record of all approve and reject actions. Newest entries first.
+          Rejection reasons are expanded from IDs into human-readable labels.
+        </p>
+        <div id="audit-log-panel-body"></div>
+      </section>
+
       <!-- ═══ Developer Test Panel ════════════════════════════════════════════════════════════════════════
            Visible only when ?dev=true is in the URL.
            Lets admins trigger Edge Functions without recreating submissions.
@@ -241,6 +259,7 @@ PayPal,test@example.com,Test PayPal account</textarea>
   <script src="assets/js/admin.js" type="module"></script>
   <script src="assets/js/admin-digest.js" type="module"></script>
   <script src="assets/js/admin-donations.js" type="module"></script>
+  <script src="assets/js/admin-audit-log.js" type="module"></script>
   <script src="assets/js/admin-test-panel.js" type="module"></script>
 </body>
 </html>
