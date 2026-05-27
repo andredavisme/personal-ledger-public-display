@@ -91,6 +91,8 @@ document.getElementById('test-load-submission-btn')?.addEventListener('click', a
 });
 
 // ─── Insert Test Fixture ───────────────────────────────────────────────────────
+// Uses upsert (onConflict: 'id') so the fixture can be re-inserted at any time
+// without a prior delete, even if the record already exists with a different status.
 document.getElementById('test-insert-fixture-btn')?.addEventListener('click', async () => {
   showOutput('⏳ Preparing test fixture...', 'fixture-output');
   try {
@@ -99,12 +101,18 @@ document.getElementById('test-insert-fixture-btn')?.addEventListener('click', as
     const budgetRows    = parseCSV(document.getElementById('fixture-budget').value);
     const donationRows  = parseCSV(document.getElementById('fixture-donations').value);
 
-    await supabase.from('submissions').delete().eq('id', TEST_UUID);
-
+    // Upsert core submission — overwrites existing record if UUID already exists
     const { error: coreErr } = await supabase
       .from('submissions')
-      .insert({ ...core, id: TEST_UUID });
+      .upsert({ ...core, id: TEST_UUID, status: 'pending' }, { onConflict: 'id' });
     if (coreErr) throw coreErr;
+
+    // Delete and re-insert CSV child rows to keep them fresh
+    await Promise.all([
+      supabase.from('submission_financials').delete().eq('submission_id', TEST_UUID),
+      supabase.from('submission_budget').delete().eq('submission_id', TEST_UUID),
+      supabase.from('submission_donations').delete().eq('submission_id', TEST_UUID),
+    ]);
 
     const financialInserts = financialRows.map((r, i) => ({
       submission_id: TEST_UUID, section: r.section, name: r.name,
