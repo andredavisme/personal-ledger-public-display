@@ -1,5 +1,6 @@
 # Donation Capture — Architecture Spec
 **Created:** May 26, 2026
+**Last Updated:** May 27, 2026
 **Status:** Approved for implementation
 
 ---
@@ -26,8 +27,8 @@ The original platform scope ended at **display** — showing a community's accep
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| 1 | Self-reported donation form + DB capture + receipt email | **Build next** |
-| 2 | Recognition wall display on Community Page | Follows Phase 1 |
+| 1 | Self-reported donation form + DB capture + receipt email | **Complete** |
+| 2 | Recognition wall display on Community Page | **Build next** |
 | 3 | PayPal / Stripe webhook verification | Future — requires processor integration |
 
 ---
@@ -37,12 +38,12 @@ The original platform scope ended at **display** — showing a community's accep
 ### User Flow
 
 1. Visitor views an approved Community Page
-2. Visitor clicks **"I Donated"** button on a donation method card
+2. Visitor clicks **"I Intend to Donate"** button on a donation method card
 3. A modal opens with a short self-report form
 4. Visitor submits the form
 5. Record is written to `public.donations`
 6. Edge Function fires → receipt email sent to donor (if email provided)
-7. Modal closes with confirmation message
+7. Modal closes with confirmation message and payment button
 
 ---
 
@@ -52,10 +53,11 @@ The original platform scope ended at **display** — showing a community's accep
 |-------|------|--------|-------|
 | Donor Name | text | **Optional** | Displayed on recognition wall if donor consents; defaults to "Anonymous" |
 | Donor Email | email | **Optional** | Required only to receive a receipt; never displayed publicly |
-| Amount | number | **Required** | Stated donation amount in USD |
+| Amount | number | **Required** | Stated donation amount in USD; soft minimum of $15.00 suggested in UI |
 | Method | select | **Required** | Pre-populated from the community's `submission_donations` methods |
 | Transaction Reference | text | **Optional** | PayPal transaction ID, check number, or other reference the donor has |
 | Display on Recognition Wall | checkbox | **Optional** | Defaults to true if name is provided; false if anonymous |
+| Amount Visible on Wall | checkbox | **Optional** | Opt-in — donor chooses whether their stated amount appears publicly |
 | Message to Community | textarea | **Optional** | Short public message displayed on recognition wall if visible |
 
 **Disclaimer displayed below the form:**
@@ -64,8 +66,6 @@ The original platform scope ended at **display** — showing a community's accep
 ---
 
 ### Database — `public.donations` (updated schema)
-
-The existing table must be migrated to add missing columns.
 
 | Column | Type | Nullable | Default | Notes |
 |--------|------|----------|---------|-------|
@@ -78,14 +78,13 @@ The existing table must be migrated to add missing columns.
 | `transaction_reference` | text | YES | NULL | Donor-provided reference (PayPal txn ID, check #, etc.) |
 | `status` | text | NO | 'self_reported' | self_reported / verified / refunded |
 | `display_on_wall` | boolean | NO | true | Donor consent for recognition wall |
+| `amount_visible_on_wall` | boolean | NO | false | Donor opt-in to show amount publicly |
 | `wall_message` | text | YES | NULL | Optional public message |
 | `receipt_sent_at` | timestamptz | YES | NULL | NULL if no email provided or not yet sent |
 | `contributor_id` | uuid | YES | NULL | Reserved for future auth-linked donors |
 | `tier` | text | YES | NULL | Reserved for future tiered giving |
 | `paypal_txn_id` | text | YES | NULL | Legacy column — superseded by transaction_reference; retained for compatibility |
 | `created_at` | timestamptz | NO | now() | — |
-
-**Migration required:** Add `submission_id`, `donor_name`, `donor_email`, `method`, `transaction_reference`, `status`, `display_on_wall`, `wall_message`, `receipt_sent_at` columns.
 
 ---
 
@@ -98,6 +97,7 @@ The existing table must be migrated to add missing columns.
 | `submission_id` | uuid | NO | — | FK → `public.submissions.id` (denormalized for query performance) |
 | `display_name` | text | NO | — | "Anonymous" or donor-provided name |
 | `wall_message` | text | YES | NULL | Donor's optional public message |
+| `amount_visible` | boolean | NO | false | Mirrors `donations.amount_visible_on_wall` — controls public display |
 | `tier` | text | YES | NULL | Reserved for future tiered giving |
 | `is_visible` | boolean | NO | true | Admin can suppress without deleting |
 | `featured` | boolean | NO | false | Admin can feature a donor |
@@ -105,45 +105,57 @@ The existing table must be migrated to add missing columns.
 | `contributor_id` | uuid | YES | NULL | Reserved for future auth-linked donors |
 | `created_at` | timestamptz | NO | now() | — |
 
-**Migration required:** Add `donation_id` FK, `submission_id`, rename/add `wall_message`.
-
 ---
 
 ### Edge Function — `send-donation-receipt`
 
-Follows the same pattern as `send-rejection-email`.
-
 | Property | Value |
 |----------|-------|
 | Trigger | Called by client after successful `donations` insert, only if `donor_email` is provided |
-| Auth | JWT required (anon key is sufficient — same as intake form pattern) |
+| Auth | JWT required (anon key is sufficient) |
 | Input | `{ donation_id: uuid }` |
-| Behavior | Loads donation + submission data, sends receipt email via Resend |
-| Secrets needed | `RESEND_API_KEY`, `EMAIL_FROM` (already in Vault from rejection email) |
-
-**Receipt email spec:**
-
-| Field | Content |
-|-------|---------|
-| To | `donor_email` |
-| Subject | `Thank you for supporting [Community Name]` |
-| Body | Donor name, amount, method, transaction reference (if provided), community name, date |
-| Disclaimer | "This is not a tax receipt. Retain your payment provider confirmation for tax purposes." |
-| Footer | Link to community page |
+| Behavior | Loads donation + submission data, sends receipt email via Gmail SMTP |
+| Secrets needed | `GMAIL_USER`, `GMAIL_APP_PASSWORD` (already in Vault) |
+| Current version | v3 — deployed and live-tested May 26, 2026 |
 
 ---
 
 ## Phase 2 — Recognition Wall Display
 
-After Phase 1 is live and at least one donation record exists, the Community Page card gains a **Recognition Wall** section.
+After Phase 1 is live and at least one donation record exists, the Community Page gains a **Recognition Wall** section.
+
+### Decisions (resolved May 27, 2026)
+
+| Question | Decision |
+|----------|----------|
+| Donation amounts on wall? | **Opt-in by donor** — `amount_visible_on_wall` checkbox on donation form; hidden by default |
+| Community notifications? | **Bi-monthly digest** — email sent to community contact on the 1st and 15th of each month |
+| Minimum donation amount? | **Soft minimum of $15.00** — suggested in UI, not enforced at DB level |
+| Wall scope & ordering? | **Single global wall** — all communities, ordered by activity ascending (lowest activity surfaces first) |
+
+---
 
 ### Display Rules
 
 - Only show donors where `display_on_wall = true` and `is_visible = true`
 - Show `display_name`, `wall_message` (if present), and formatted donation date
-- **Do not show `amount`** on the public wall — amounts are private by default at launch
-- Show a running **donor count** (not total amount) publicly
+- Show `amount` only if `amount_visible_on_wall = true` (donor opt-in)
+- Show a running **donor count** per community
+- Global wall ordered by **community donation activity ascending** — least active communities appear at the top
 - Admin can toggle `is_visible` and `featured` per donor in the admin panel
+
+### Soft Minimum UI Behavior
+
+- Amount field displays helper text: *"Suggested minimum: $15.00"*
+- No form-level validation block — donor may submit any amount
+- Admin can see all submissions regardless of amount
+
+### Bi-Monthly Digest — Community Notification
+
+- Triggered on the **1st and 15th of each month**
+- Sent to the community contact email on file in their `submissions` record
+- Content: donor count since last digest, total stated amount received, new wall messages
+- Implementation: scheduled Edge Function or cron job (to be scoped in Phase 2 build)
 
 ### Admin Actions (Phase 2 additions)
 
@@ -153,6 +165,7 @@ After Phase 1 is live and at least one donation record exists, the Community Pag
 | Toggle `is_visible` on recognition wall entries | Admin panel |
 | Mark a donor as `featured` | Admin panel |
 | View receipt sent status | Admin panel — `receipt_sent_at` column |
+| Manually re-trigger receipt for NULL `receipt_sent_at` | Admin panel — retry UI (open item) |
 
 ---
 
@@ -180,7 +193,4 @@ Not scoped for current build. When implemented:
 
 ## Open Questions
 
-- [ ] Should donation amounts ever be visible on the public recognition wall (opt-in by donor)?
-- [ ] Should communities be notified when they receive a donation? ("New donation received" email to community contact)
-- [ ] Should there be a minimum donation amount to prevent spam entries?
-- [ ] Should the recognition wall be per-community or a single global wall across all communities?
+*All Phase 2 questions resolved May 27, 2026. No open questions remaining.*
