@@ -26,6 +26,56 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 28, 2026 — Session 14
+**Status at close:** `portal.js` built and committed; Community Finance Portal front-end complete pending one RLS policy and one Supabase redirect URL
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Built and committed `assets/js/portal.js` | Full Community Finance Portal module: PortalAuth mount, three-tab form (Receipt / Expense / Message), Supabase Storage file upload to `community-docs` bucket, insert into `public.community_financials`, history list loaded from Supabase |
+| Schema confirmed for `community_financials` | Verified live columns: `id, submission_id, donation_id, type, status, amount, currency, description, notes, document_url, submitted_at, reviewed_at, reviewed_by, created_at` |
+| File upload path pattern defined | `{submission_id}/{timestamp}-{sanitized_filename}` stored as `document_url` (storage path, not signed URL) |
+
+#### 🟡 Decisions Made This Session
+| Decision | Choice |
+|---|---|
+| `type` values | `receipt` \| `expense` \| `message` — maps to pipeline stages 3 and 4 |
+| Initial `status` on insert | Always `pending` — admin promotes to `self_reported → verified → approved` |
+| File upload | Optional on receipt and expense; not available on message tab |
+| `document_url` stores | Storage path (not a signed URL) — admin generates signed URL on demand |
+| History display | Last 50 records for this rep's `submission_id`, newest first, with color-coded status badges |
+
+#### 🟠 Open Items Carried Forward
+- [ ] **RLS policy on `community_financials`** — reps need `INSERT` scoped to `submission_id` where `submissions.email = auth.jwt() ->> 'email'`, and `SELECT` on their own rows. Migration not yet applied.
+- [ ] **Supabase Auth redirect URL** — add `https://personal-ledger-public-display.pages.dev/portal.html` to Supabase Auth → URL Configuration (magic-link won't resolve without this)
+- [ ] **Write and commit `docs/architecture/transparency-page.md`** — four-stage pipeline spec
+- [ ] **Write and commit `docs/architecture/community-finance-portal.md`** — portal scope doc
+- [ ] **Add both new docs to `documentation_catalog`** in Supabase
+- [ ] **Build Admin Finance Verification panel** — review, approve, and publish finance submissions
+- [ ] **Build `transparency.html`** — public four-stage pipeline page
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+| RLS INSERT policy on `community_financials` not yet applied | Portal submits will fail with 403 until this migration is run — **first item next session** |
+
+#### 📍 Where to Resume
+1. **Apply RLS policy migration on `community_financials`** — rep INSERT + SELECT scoped by `submissions.email`
+2. **Add Supabase redirect URL** for `portal.html`
+3. **Smoke-test the portal** — magic-link auth → form → submit → history refresh
+4. **Write architecture docs** — `transparency-page.md` and `community-finance-portal.md`
+5. **Begin `transparency.html`** build
+
+#### 📚 Commits & Migrations This Session
+| Reference | What Changed |
+|---|---|
+| Commit `7e39ccb` | `assets/js/portal.js` — Community Finance Portal module |
+| This commit | `docs/session-handoff.md` Session 14 closeout |
+
+---
+
 ### 🕒 May 28, 2026 — Session 13
 **Status at close:** `community_financials` migration applied; RLS and Storage bucket scaffolded; `project-reference.md` updated with new table and corrected column name
 
@@ -103,13 +153,13 @@ At the beginning of every new thread or work session:
 | Portal auth | Magic link to submission email |
 
 #### 🟠 Open Items Carried Forward
-- [ ] **Write and commit `docs/architecture/transparency-page.md`** — full spec with all decisions baked in; two open questions marked resolved
-- [ ] **Write and commit `docs/architecture/community-finance-portal.md`** — new architecture doc for the expanded portal scope
+- [ ] **Write and commit `docs/architecture/transparency-page.md`**
+- [ ] **Write and commit `docs/architecture/community-finance-portal.md`**
 - [ ] **Add both new docs to `documentation_catalog`** in Supabase
-- [ ] **Build `public.community_financials` table** — stores community expense/application records with approval status
-- [ ] **Build Community Finance Portal** — magic-link-gated form for community reps to submit receipt confirmation, expense records, and messages
-- [ ] **Build Admin Finance Verification panel** — new admin panel section to review, approve, and publish finance submissions
-- [ ] **Build `transparency.html`** — public page rendering the four-stage pipeline per community
+- [ ] **Build `public.community_financials` table**
+- [ ] **Build Community Finance Portal**
+- [ ] **Build Admin Finance Verification panel**
+- [ ] **Build `transparency.html`**
 
 #### 🔴 Known Issues
 | Issue | Status |
@@ -118,4 +168,7 @@ At the beginning of every new thread or work session:
 | Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
 
 #### 📍 Where to Resume
-1. **Commit `docs/architectu
+1. Commit `docs/architecture/transparency-page.md`
+2. Commit `docs/architecture/community-finance-portal.md`
+3. Seed both in `documentation_catalog`
+4. Begin `community_financials` table build
