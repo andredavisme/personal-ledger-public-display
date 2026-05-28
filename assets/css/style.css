@@ -39,8 +39,25 @@ a:hover { text-decoration: underline; }
 .site-header nav a.active,
 .site-header nav a:hover { color: #fff; text-decoration: none; }
 
-/* Admin nav link: hidden until auth confirmed by nav.js */
+/* Admin text link: hidden until auth confirmed by nav.js */
 #nav-admin-link { display: none; }
+
+/* Admin gate (lock icon): always visible when logged out */
+#nav-admin-gate {
+  display: inline;
+  margin-left: 1.5rem;
+  color: #4a5568;
+  font-size: 0.85rem;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+  text-decoration: none;
+  vertical-align: middle;
+}
+#nav-admin-gate:hover {
+  opacity: 1;
+  color: #a0aec0;
+  text-decoration: none;
+}
 
 /* === Auth Gate === */
 .auth-gate {
