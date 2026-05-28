@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Community Finance Portal — Community Ledger</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/portal.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <h1>Community Ledger</h1>
+      <nav>
+        <a href="index.html">Submit</a>
+        <a href="community.html">Community Pages</a>
+        <a href="wall.html">Recognition Wall</a>
+        <a href="transparency.html">Transparency</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+
+    <!--
+      #portal-root is the single mount point for the entire portal.
+
+      BEFORE AUTH:
+        portal-auth.js renders the magic-link request or check-email screen here.
+
+      AFTER AUTH:
+        portal-auth.js clears this container and calls onAuthenticated(user, submissionId).
+        portal.js then renders the rep's portal content directly into #portal-root.
+    -->
+    <div id="portal-root"></div>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; 2026 Community Ledger. Portal access is limited to approved community representatives.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/portal.js" type="module"></script>
+</body>
+</html>
