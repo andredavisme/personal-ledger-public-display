@@ -57,12 +57,23 @@ function parseCSV(text) {
   });
 }
 
+/**
+ * Reads a File as text, forcing UTF-8 decoding.
+ * Falls back gracefully for files saved with a BOM (e.g. Excel CSV UTF-8 BOM)
+ * by stripping the BOM if present.
+ */
 function readFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload  = e => resolve(e.target.result);
+    reader.onload = e => {
+      let text = e.target.result;
+      // Strip UTF-8 BOM (\uFEFF) if present — Excel adds this
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      resolve(text);
+    };
     reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
-    reader.readAsText(file);
+    // Explicitly request UTF-8 — handles é, ñ, ü, etc.
+    reader.readAsText(file, 'UTF-8');
   });
 }
 
