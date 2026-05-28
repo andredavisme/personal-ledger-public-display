@@ -156,7 +156,7 @@
   }
 }
 
-/* ─── Digest Panel ───────────────────────────────────────────────────────────── */
+/* ─── Digest Panel ────────────────────────────────────────────────────────────────── */
 
 #digest-panel .digest-status {
   display: grid;
@@ -234,7 +234,7 @@
   border: 1px solid #fecaca;
 }
 
-/* ─── Donations Panel ────────────────────────────────────────────────────────── */
+/* ─── Donations Panel ────────────────────────────────────────────────────────────────── */
 
 .donations-table-wrap {
   overflow-x: auto;
@@ -313,7 +313,80 @@
   font-size: 0.85rem;
 }
 
-/* ─── Audit Log Panel ────────────────────────────────────────────────────────── */
+/* ─── Finance Verification Panel ─────────────────────────────────────────────────────────── */
+
+.finance-status {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.finance-status--pending {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.finance-status--self_reported {
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde68a;
+}
+
+.finance-status--verified {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.finance-status--approved {
+  background: #bbf7d0;
+  color: #14532d;
+  border: 1px solid #86efac;
+}
+
+.finance-status--returned {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* Return to Submitter modal */
+.finance-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.finance-modal[hidden] {
+  display: none;
+}
+
+.finance-modal__box {
+  background: #fff;
+  border-radius: var(--radius-lg, 12px);
+  padding: 2rem;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: var(--shadow-lg, 0 10px 40px rgba(0,0,0,0.18));
+  display: grid;
+  gap: 0.75rem;
+}
+
+.finance-modal__box h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* ─── Audit Log Panel ────────────────────────────────────────────────────────────────── */
 
 .audit-table-wrap {
   overflow-x: auto;
@@ -401,7 +474,7 @@
   font-style: italic;
 }
 
-/* ─── Recognition Wall Panel ─────────────────────────────────────────────────── */
+/* ─── Recognition Wall Panel ────────────────────────────────────────────────────────────────── */
 
 .wall-table-wrap {
   overflow-x: auto;
