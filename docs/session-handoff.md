@@ -26,6 +26,52 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 28, 2026 — Session 16
+**Status at close:** UI polish complete — sticky header + standardized nav live across all pages; database fully clean; ready for first real submission and approval walkthrough
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Sticky site header | `position: sticky; top: 0; z-index: 1000; box-shadow` added to `.site-header` in `style.css` — header locks to top on scroll across all pages |
+| Standardized nav — all 6 pages | Every page now has the same link order: Submit → Community Pages → Transparency → Recognition Wall → Portal → Admin |
+| Admin link auth-gated via `nav.js` | New shared module `assets/js/nav.js` imports `Auth`, calls `Auth.initAuth()`, listens for `onChange()`, and shows/hides `#nav-admin-link` based on login state. Default CSS: `#nav-admin-link { display: none; }`. Imported on all 5 public pages. |
+| `admin.html` nav fully consistent | Admin page nav updated to full 6-link set; Admin marked active; no `nav.js` needed (entire UI is already auth-gated inside `#admin-ui`) |
+| `transparency.html` — Portal link added | Previously missing Portal nav link corrected |
+| `portal.html` — Portal marked active | `class="active"` now correct on Portal's own link |
+| Test database records fully purged | Deleted all rows for UUID `00000000-0000-0000-0000-000000000001` across: `submission_financials`, `submission_budget`, `submission_donations`, `recognition_wall`, `community_financials`, `admin_actions`, `donations`, `submissions`. Verified: 0 TEST records remain. |
+
+#### 🟡 Decisions Made This Session
+| Decision | Choice |
+|---|---|
+| Admin link visibility | Auth-gated via shared `nav.js` module rather than inline per-page script — single source of truth |
+| Test data | Full purge — database is now clean for first real submission |
+| First real submission | You will submit manually and walk through the full approval process |
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Submit first real community record** — use the intake form at `index.html`; go through the full admin approval workflow
+- [ ] **Verify end-to-end on the live site** — sticky header, nav consistency, Admin link hidden/shown correctly after login/logout
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+1. **Go to `https://personal-ledger-public-display.pages.dev/index.html`** — submit the first real community record
+2. **Go to `admin.html`** — log in, review the submission, run it through the full approval workflow
+3. **Verify public-facing pages** — Community Page, Transparency, Recognition Wall, Portal all reflect the approved data correctly
+4. **If any issues surface during the walkthrough** — address in Session 17
+
+#### 📚 Commits & Migrations This Session
+| Reference | What Changed |
+|---|---|
+| Commit `d6d0059` | `style.css` sticky header; new `assets/js/nav.js`; updated `index`, `community`, `wall`, `portal`, `transparency`, `admin` HTML with standardized nav |
+| DB (manual SQL) | Purged all test records for UUID `00000000-0000-0000-0000-000000000001` across 8 tables |
+| This commit | `docs/session-handoff.md` Session 16 closeout |
+
+---
+
 ### 🕒 May 28, 2026 — Session 15
 **Status at close:** Community Finance Portal fully live and smoke-tested; all three tabs passing end-to-end
 
