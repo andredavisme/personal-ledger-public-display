@@ -26,6 +26,49 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 28, 2026 — Session 17
+**Status at close:** Admin nav gate live and verified; portal admin bypass working; all nav flows confirmed end-to-end
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Always-visible 🔒 admin gate in nav | `#nav-admin-gate` lock icon added to all 5 public page navs — always visible when logged out, dimmed (`opacity: 0.55`), links to `admin.html`. Disappears once logged in, replaced by full Admin text link. |
+| `nav.js` updated to toggle both elements | `syncAdminLink()` now controls both `#nav-admin-gate` (show when logged out) and `#nav-admin-link` (show when logged in) — single function, single source of truth |
+| Portal admin bypass — `portal-auth.js` | Added `_isAdminUser(user)` — detects admin sessions via `user.app_metadata.providers` (admins have `['email']`, reps have `['magiclink']`). If admin detected, skip rep lookup entirely and show `_showAdminNoticeScreen()` with a direct "Go to Admin Panel" button. Session is preserved — no sign-out. |
+| End-to-end flow verified live | 🔒 lock → `admin.html` → log in → Admin link appears in nav → navigate to Portal → Admin notice shown with link back — confirmed working |
+
+#### 🟡 Decisions Made This Session
+| Decision | Choice |
+|---|---|
+| Admin nav entry point | Always-visible lock icon — subtle but always clickable; no need to type the URL manually |
+| Portal behavior for admins | Show informational notice + redirect button — do not sign out, do not show access denied |
+| Admin detection method | `app_metadata.providers` array: `['email']` = password login (admin); `['magiclink']` = OTP (rep) |
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Submit first real community record** — use the intake form at `index.html`; go through the full admin approval workflow
+- [ ] **Verify all public-facing pages** with real approved data — Community Page, Transparency, Recognition Wall, Portal
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+1. **Go to `https://personal-ledger-public-display.pages.dev/index.html`** — submit the first real community record
+2. **Log into `admin.html`** — review and run through the full approval workflow
+3. **Verify all public pages** reflect approved data correctly
+4. **Address any issues** found during the walkthrough — that becomes Session 18
+
+#### 📚 Commits This Session
+| Reference | What Changed |
+|---|---|
+| Commit `11665c3` | `nav.js` admin gate toggle; `style.css` lock icon styles; all 5 public HTML pages updated with `#nav-admin-gate` |
+| Commit `4e4af0c` | `portal-auth.js` — admin bypass: `_isAdminUser()`, `_showAdminNoticeScreen()`, bypass in `_verifySubmissionAccess()` |
+| This commit | `docs/session-handoff.md` Session 17 closeout |
+
+---
+
 ### 🕒 May 28, 2026 — Session 16
 **Status at close:** UI polish complete — sticky header + standardized nav live across all pages; database fully clean; ready for first real submission and approval walkthrough
 
