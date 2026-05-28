@@ -1,0 +1,11 @@
+# Cloudflare Pages _headers
+# Prevent browsers and edge from caching JS files aggressively
+
+/assets/js/*
+  Cache-Control: no-cache, must-revalidate
+
+/*.html
+  Cache-Control: no-cache, must-revalidate
+
+/
+  Cache-Control: no-cache, must-revalidate
