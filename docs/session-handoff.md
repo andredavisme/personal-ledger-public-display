@@ -26,6 +26,44 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 28, 2026 — Session 15
+**Status at close:** Community Finance Portal fully live and smoke-tested; all three tabs passing end-to-end
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Confirmed RLS policies already applied on `community_financials` | All four policies live: `community_rep_insert_financials`, `community_rep_select_financials`, `anon_read_verified_approved_financials`, `admin_all_financials` — no migration needed |
+| Added Supabase Auth redirect URL | `https://personal-ledger-public-display.pages.dev/portal.html` added to Auth → URL Configuration |
+| Smoke-tested Community Finance Portal end-to-end | Magic-link auth ✅ · Receipt tab (with file upload) ✅ · Expense tab ✅ · Message tab ✅ · History list (color-coded badges, newest-first) ✅ |
+
+#### 🟡 Decisions Made This Session
+| Decision | Choice |
+|---|---|
+| RLS migration | Not needed — policies confirmed already live from Session 13 |
+| Portal status | Fully operational — no blockers remain |
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Build Admin Finance Verification panel** — review, approve, and publish finance submissions from `community_financials`
+- [ ] **Build `transparency.html`** — public four-stage pipeline page (Request → Intention → Received → Applied)
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+1. **Build Admin Finance Verification panel** — list `community_financials` rows, allow admin to review doc uploads (generate signed URL), promote status (`pending → self_reported → verified → approved`)
+2. **Build `transparency.html`** — global aggregation + up to 3 community comparison cards; pulls only `verified` and `approved` rows from `community_financials`
+
+#### 📚 Commits & Migrations This Session
+| Reference | What Changed |
+|---|---|
+| Auth config (manual) | Added `portal.html` redirect URL in Supabase dashboard |
+| This commit | `docs/session-handoff.md` Session 15 entry |
+
+---
+
 ### 🕒 May 28, 2026 — Session 14
 **Status at close:** `portal.js` built and committed; Community Finance Portal front-end complete pending one RLS policy and one Supabase redirect URL
 
