@@ -1,5 +1,5 @@
 # Community Ledger — Project Reference
-**Last Updated:** May 26, 2026
+**Last Updated:** May 28, 2026
 
 > ⚠️ **Hosting Note:** This project migrated from Netlify to Cloudflare Pages on May 25, 2026 after Netlify's free tier bandwidth limit was reached during development. See `docs/tutorial/06-adjusting-fire.md` for the full reasoning and lesson.
 
@@ -38,7 +38,7 @@
 ### Key Tables
 | Table | Purpose |
 |---|---|
-| public.submissions | Core intake records |
+| public.submissions | Core intake records. Key auth column: `email` (used in RLS policies) |
 | public.submission_financials | Financial statement CSV rows |
 | public.submission_budget | Budget CSV rows |
 | public.submission_donations | Donation method CSV rows |
@@ -46,12 +46,21 @@
 | public.admin_actions | Immutable audit log |
 | public.donations | Donor-reported donation events and receipts |
 | public.recognition_wall | Public donor display — visibility-controlled |
+| public.community_financials | Community rep financial submissions — receipts, expenses, messages; feeds transparency page |
 | public.documentation_catalog | Searchable index of all project documentation |
+
+> ⚠️ **RLS Note:** Policies scoping to a community rep's submission use `submissions.email` (not `contact_email` — that column does not exist).
 
 ### Key Views
 | View | Purpose |
 |---|---|
 | public.submissions_with_collision | Adds reference_collision boolean |
+| public.admin_actions_log | Joins admin_actions → submissions → correction_reasons for readable audit display |
+
+### Storage Buckets
+| Bucket | Access | Purpose |
+|---|---|---|
+| community-docs | Private | Community rep document uploads (receipts, expense docs) |
 
 ### Edge Functions
 | Function | Purpose |
@@ -85,6 +94,9 @@
 | assets/js/auth.js | Auth abstraction layer |
 | assets/js/supabase.js | Shared Supabase client |
 | assets/js/community.js | Public community page renderer |
+| assets/js/admin-wall.js | Admin recognition wall controls |
+| assets/js/admin-donations.js | Admin donation pledges panel |
+| assets/js/admin-digest.js | Admin community digest panel |
 
 ---
 
@@ -116,7 +128,7 @@ WHERE status = 'needs_update';
 
 ---
 
-## 📌 Open Items (as of May 26, 2026)
+## 📌 Open Items (as of May 28, 2026)
 - [x] Create Cloudflare Pages account and connect GitHub repo
 - [x] Update live URLs in this document after Cloudflare deploy
 - [x] Migrate auth from Netlify Identity → Supabase Auth
@@ -124,12 +136,15 @@ WHERE status = 'needs_update';
 - [x] Deploy send-donation-receipt Edge Function
 - [x] Run donation capture Phase 1 DB migration
 - [x] Create documentation_catalog table and seed all docs
+- [x] Build recognition wall admin panel
+- [x] Run `create_community_financials_table` migration
 - [ ] Move Supabase anon key to Cloudflare Pages environment variables (deferred — publishable key, not a security risk)
-- [ ] Link community.css in community.html
-- [ ] Add admin_actions audit log view to Supabase
-- [ ] Build "I Donated" modal on community card (Phase 1 frontend)
-- [ ] Test send-donation-receipt Edge Function with live data
-- [ ] Answer Phase 2 open questions in donation-capture.md before building recognition wall
+- [ ] Write and commit `docs/architecture/transparency-page.md`
+- [ ] Write and commit `docs/architecture/community-finance-portal.md`
+- [ ] Add both new architecture docs to `documentation_catalog` in Supabase
+- [ ] Build Community Finance Portal (magic-link gated, rep form → `community_financials`)
+- [ ] Build Admin Finance Verification panel
+- [ ] Build `transparency.html` — public four-stage pipeline page
 
 ---
 
