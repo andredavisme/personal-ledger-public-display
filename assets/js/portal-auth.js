@@ -15,17 +15,19 @@
  *   7. Supabase exchanges the token automatically → session established
  *   8. We verify the session email exists in public.submissions (approved)
  *   9. If verified → call onAuthenticated(user, submissionId) and show the portal
- *  10. If not found → sign out and show an access-denied message
+ *  10. If not found but user is an ADMIN (password login) → show admin notice
+ *  11. If not found and not admin → sign out and show access-denied
+ *
+ * ADMIN DETECTION:
+ *   Admin sessions use signInWithPassword (provider = 'email', no 'magiclink').
+ *   Rep sessions use signInWithOtp (provider includes 'magiclink').
+ *   We check user.app_metadata.providers to distinguish the two.
  *
  * REDIRECT URL:
  *   Magic links must redirect to this page. Configure in Supabase Dashboard:
  *   Authentication → URL Configuration → Redirect URLs
  *   Add: https://personal-ledger-public-display.pages.dev/portal.html
  *   (and http://localhost:8080/portal.html for local dev)
- *
- * AUTH STATE:
- *   PortalAuth manages all UI state transitions so portal.js never needs
- *   to think about auth directly — it just waits for onAuthenticated().
  */
 
 import supabase from './supabase.js';
@@ -38,12 +40,20 @@ const PortalAuth = (() => {
   let _onAuthenticatedCallback = null;
   let _container = null;
 
-  // ─── Screen builders ─────────────────────────────────────────────────────
+  // ─── Admin detection ─────────────────────────────────────────────────────
 
   /**
-   * Renders the "Enter your email" screen.
-   * Shown when there is no active session.
+   * Returns true if the session belongs to an admin (password login).
+   * Admin accounts use signInWithPassword → provider is 'email' only.
+   * Community rep magic links → provider includes 'magiclink'.
    */
+  function _isAdminUser(user) {
+    const providers = user?.app_metadata?.providers || [];
+    return providers.includes('email') && !providers.includes('magiclink');
+  }
+
+  // ─── Screen builders ─────────────────────────────────────────────────────
+
   function _showRequestScreen(message = null) {
     _container.innerHTML = `
       <div class="portal-auth">
@@ -87,10 +97,6 @@ const PortalAuth = (() => {
     setTimeout(() => input?.focus(), 50);
   }
 
-  /**
-   * Renders the "Check your email" confirmation screen.
-   * Shown after a magic link has been sent.
-   */
   function _showCheckEmailScreen(email) {
     _container.innerHTML = `
       <div class="portal-auth">
@@ -116,10 +122,6 @@ const PortalAuth = (() => {
     });
   }
 
-  /**
-   * Renders the "Access denied" screen.
-   * Shown when the authenticated email is not on an approved submission.
-   */
   function _showAccessDeniedScreen(email) {
     _container.innerHTML = `
       <div class="portal-auth">
@@ -146,8 +148,28 @@ const PortalAuth = (() => {
   }
 
   /**
-   * Renders a loading/verifying screen while we check the session.
+   * Shown when an admin navigates to portal.html while logged in.
+   * Gives them a clear explanation and a link back to admin.
    */
+  function _showAdminNoticeScreen(email) {
+    _container.innerHTML = `
+      <div class="portal-auth">
+        <div class="portal-auth__card">
+          <div class="portal-auth__logo">🔐</div>
+          <h1 class="portal-auth__title">Admin Session Active</h1>
+          <p class="portal-auth__subtitle">
+            You're signed in as <strong>${_escHtml(email)}</strong> — an administrator account.
+            The Community Finance Portal is for community representatives only.
+          </p>
+          <p class="portal-auth__hint">
+            To review community financial submissions, use the Admin panel.
+          </p>
+          <a href="admin.html" class="portal-auth__btn" style="display:inline-block;text-align:center;text-decoration:none;">Go to Admin Panel</a>
+        </div>
+      </div>
+    `;
+  }
+
   function _showLoadingScreen(label = 'Verifying…') {
     _container.innerHTML = `
       <div class="portal-auth">
@@ -162,9 +184,9 @@ const PortalAuth = (() => {
   // ─── OTP request handler ─────────────────────────────────────────────────
 
   async function _handleOtpRequest() {
-    const email  = document.getElementById('portal-email')?.value?.trim().toLowerCase();
+    const email   = document.getElementById('portal-email')?.value?.trim().toLowerCase();
     const errorEl = document.getElementById('portal-auth-error');
-    const btn    = document.getElementById('portal-auth-submit');
+    const btn     = document.getElementById('portal-auth-submit');
 
     if (!email) {
       _showError(errorEl, 'Please enter your email address.');
@@ -199,15 +221,19 @@ const PortalAuth = (() => {
 
   // ─── Session verification ────────────────────────────────────────────────
 
-  /**
-   * Called once we have a confirmed Supabase session.
-   * Looks up the user's email in public.submissions (approved only).
-   * If found → calls the onAuthenticated callback.
-   * If not found → shows access denied.
-   */
   async function _verifySubmissionAccess(user) {
     _showLoadingScreen('Verifying your access…');
 
+    // ── Admin bypass ──────────────────────────────────────────────────────
+    // If the session belongs to an admin (password login), don't run the
+    // submission lookup — just show the admin notice and stop here.
+    // This prevents the "Access Not Found" flash when an admin visits portal.html.
+    if (_isAdminUser(user)) {
+      _showAdminNoticeScreen(user.email);
+      return;
+    }
+
+    // ── Community rep check ───────────────────────────────────────────────
     const { data, error } = await supabase
       .from('submissions')
       .select('id')
@@ -224,7 +250,6 @@ const PortalAuth = (() => {
     _user         = user;
     _submissionId = data.id;
 
-    // Clear the auth UI — portal.js will render its own content
     _container.innerHTML = '';
 
     if (typeof _onAuthenticatedCallback === 'function') {
@@ -234,14 +259,6 @@ const PortalAuth = (() => {
 
   // ─── Public API ──────────────────────────────────────────────────────────
 
-  /**
-   * init(containerId, onAuthenticated)
-   *
-   * @param {string}   containerId      - ID of the DOM element to render auth UI into
-   * @param {Function} onAuthenticated  - Called with (user, submissionId) once access is confirmed
-   *
-   * Call this from portal.js on DOMContentLoaded.
-   */
   async function init(containerId, onAuthenticated) {
     _container = document.getElementById(containerId);
     _onAuthenticatedCallback = onAuthenticated;
@@ -253,13 +270,10 @@ const PortalAuth = (() => {
 
     _showLoadingScreen('Loading…');
 
-    // Listen for future auth state changes (e.g. token refresh, sign-out)
     supabase.auth.onAuthStateChange((event, session) => {
-      // SIGNED_IN fires when the magic link token is exchanged
       if (event === 'SIGNED_IN' && session?.user && !_user) {
         _verifySubmissionAccess(session.user);
       }
-      // SIGNED_OUT — return to request screen
       if (event === 'SIGNED_OUT') {
         _user = null;
         _submissionId = null;
@@ -267,22 +281,15 @@ const PortalAuth = (() => {
       }
     });
 
-    // Check for an existing session on page load
     const { data: { session } } = await supabase.auth.getSession();
 
     if (session?.user) {
-      // Already authenticated — verify access
       await _verifySubmissionAccess(session.user);
     } else {
-      // No session — show the request screen
       _showRequestScreen();
     }
   }
 
-  /**
-   * signOut()
-   * Exposed so portal.js can add a sign-out button.
-   */
   async function signOut() {
     await supabase.auth.signOut();
     _user = null;
@@ -290,10 +297,6 @@ const PortalAuth = (() => {
     _showRequestScreen('You have been signed out.');
   }
 
-  /**
-   * getUser() / getSubmissionId()
-   * Accessors for portal.js if needed after authentication.
-   */
   function getUser()         { return _user; }
   function getSubmissionId() { return _submissionId; }
 
