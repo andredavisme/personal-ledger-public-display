@@ -4,7 +4,7 @@
  * Flow:
  * 1. Validate required text fields and CSV files
  * 2. Parse CSVs in-browser
- * 3. Insert ledger.submissions (core record)
+ * 3. Insert public.submissions (core record)
  * 4. Verify the insert landed in the database
  * 5. Insert CSV child rows in parallel
  * 6. Show confirmation modal with the submitter_reference echoed back
@@ -12,7 +12,7 @@
  * submitter_reference:
  *   A free-text identifier chosen by the submitter (e.g. DAVIS-2026-001).
  *   Required. Not unique-constrained — the admin is alerted via
- *   ledger.submissions_with_collision view when the same reference
+ *   public.submissions_with_collision view when the same reference
  *   appears on more than one submission.
  *
  * NOTE: This file must be loaded with type="module".
@@ -176,7 +176,6 @@ form.addEventListener('submit', async event => {
     const submitterRef = data.get('submitter_reference').trim();
 
     const { data: submission, error: submissionError } = await supabase
-      .schema('ledger')
       .from('submissions')
       .insert({
         full_name:                data.get('full_name').trim(),
@@ -200,7 +199,6 @@ form.addEventListener('submit', async event => {
 
     // Verify record landed before declaring success
     const { data: verify, error: verifyError } = await supabase
-      .schema('ledger')
       .from('submissions')
       .select('id, status')
       .eq('id', submissionId)
@@ -233,10 +231,10 @@ form.addEventListener('submit', async event => {
       }));
 
     const [{ error: fe }, { error: be }, { error: de }] = await Promise.all([
-      supabase.schema('ledger').from('submission_financials').insert(financialInserts),
-      supabase.schema('ledger').from('submission_budget').insert(budgetInserts),
+      supabase.from('submission_financials').insert(financialInserts),
+      supabase.from('submission_budget').insert(budgetInserts),
       donationInserts.length
-        ? supabase.schema('ledger').from('submission_donations').insert(donationInserts)
+        ? supabase.from('submission_donations').insert(donationInserts)
         : Promise.resolve({ error: null })
     ]);
 
