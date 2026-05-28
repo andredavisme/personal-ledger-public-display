@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Financial Transparency — Community Ledger</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/transparency.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <h1>Community Ledger</h1>
+      <nav>
+        <a href="index.html">Submit</a>
+        <a href="community.html">Community Pages</a>
+        <a href="transparency.html" class="active">Transparency</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Hero -->
+    <section class="tp-hero">
+      <div class="container">
+        <h2>Financial Transparency</h2>
+        <p class="tp-hero__sub">Every record submitted by a community representative moves through a four-stage verification pipeline before appearing here. We show all stages so you can see the full picture — including what’s still pending review.</p>
+
+        <!-- Pipeline strip -->
+        <div class="tp-pipeline">
+          <div class="tp-pipeline__stage tp-pipeline__stage--pending">
+            <span class="tp-pipeline__icon">⏳</span>
+            <strong>Pending</strong>
+            <span>Submitted, awaiting review</span>
+          </div>
+          <div class="tp-pipeline__arrow">→</div>
+          <div class="tp-pipeline__stage tp-pipeline__stage--self_reported">
+            <span class="tp-pipeline__icon">📝</span>
+            <strong>Self-Reported</strong>
+            <span>Community-confirmed</span>
+          </div>
+          <div class="tp-pipeline__arrow">→</div>
+          <div class="tp-pipeline__stage tp-pipeline__stage--verified">
+            <span class="tp-pipeline__icon">🔍</span>
+            <strong>Verified</strong>
+            <span>Admin-reviewed</span>
+          </div>
+          <div class="tp-pipeline__arrow">→</div>
+          <div class="tp-pipeline__stage tp-pipeline__stage--approved">
+            <span class="tp-pipeline__icon">✅</span>
+            <strong>Approved</strong>
+            <span>Published &amp; confirmed</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filter bar -->
+    <section class="tp-filters">
+      <div class="container tp-filters__inner">
+        <div class="tp-filters__group">
+          <label>Communities <span class="tp-filter-hint">(select up to 3)</span></label>
+          <div id="community-filter" class="tp-community-chips"></div>
+        </div>
+        <div class="tp-filters__group tp-filters__group--type">
+          <label>Record Type</label>
+          <div class="tp-type-btns" id="type-filter">
+            <button class="tp-type-btn tp-type-btn--active" data-type="all">All</button>
+            <button class="tp-type-btn" data-type="income">Income</button>
+            <button class="tp-type-btn" data-type="expense">Expense</button>
+            <button class="tp-type-btn" data-type="receipt">Receipt</button>
+            <button class="tp-type-btn" data-type="message">Message</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visualizations -->
+    <section class="tp-viz" id="viz-section">
+      <div class="container">
+        <div class="tp-viz__grid">
+          <div class="tp-viz__card">
+            <h4>Income vs Expenses</h4>
+            <p class="tp-viz__desc">Approved amounts only. Pending amounts are shown as a hatched overlay.</p>
+            <div class="tp-viz__canvas-wrap"><canvas id="chart-income-expense"></canvas></div>
+          </div>
+          <div class="tp-viz__card">
+            <h4>Verification Pipeline</h4>
+            <p class="tp-viz__desc">All submitted records by current status.</p>
+            <div class="tp-viz__canvas-wrap"><canvas id="chart-pipeline"></canvas></div>
+          </div>
+          <div class="tp-viz__card">
+            <h4>Submission Timeline</h4>
+            <p class="tp-viz__desc">Records submitted per month. Pending shown in amber.</p>
+            <div class="tp-viz__canvas-wrap"><canvas id="chart-timeline"></canvas></div>
+          </div>
+          <div class="tp-viz__card">
+            <h4>Record Type Breakdown</h4>
+            <p class="tp-viz__desc">Distribution of record types across selected communities.</p>
+            <div class="tp-viz__canvas-wrap"><canvas id="chart-types"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Community record cards -->
+    <section class="tp-records">
+      <div class="container" id="records-container">
+        <p class="tp-empty" id="records-loading">Loading records&hellip;</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>Financial records on this page are submitted by community representatives and verified by the Community Ledger team. &copy; 2026 Community Ledger.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/transparency.js" type="module"></script>
+</body>
+</html>
