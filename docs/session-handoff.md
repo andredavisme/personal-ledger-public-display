@@ -26,8 +26,64 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 28, 2026 — Session 12
+**Status at close:** Wall display logic fully verified and closed; transparency page and Community Finance Portal fully scoped; architecture docs ready to commit next session
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Verified `amount_visible_on_wall` conditional in `wall.js` | `renderEntry()` checks `entry.amount_visible && entry.donations?.amount != null` before rendering amount — correctly suppresses on public wall |
+| Verified global wall ordering | Communities sorted `a.entries.length - b.entries.length` ascending (least active first) — confirmed implemented |
+| Verified donor count per community | `donorCount` rendered as `wall-community__count` badge in each community header — confirmed built |
+| Verified `is_visible` filter hardening | `.eq('is_visible', true)` explicit in `wall.js` query — confirmed present |
+| Verified featured donor highlight | `entry.featured` appends `wall-entry--featured` class — confirmed wired |
+| Verified featured CSS in `wall.css` | `.wall-entry--featured` renders `background: #fefce8` (warm yellow), `border-color: #fde68a` — visually distinct from default |
+| Closed all Session 11 carry-forward wall items | All five open wall items confirmed implemented and styled — wall is complete |
+| Scoped transparency page architecture | Four-stage pipeline defined: Request → Intention → Received → Applied |
+| Resolved Stage 3 ("Received") confirmation path | PayPal auto-verification out of scope; community self-confirms via portal (uploads docs) → admin promotes `self_reported → verified` |
+| Resolved transparency page display structure | Top: global aggregation across all communities; Bottom: filtered comparison of up to 3 communities; zero-donation communities appear in global but filterable in comparison view |
+| Expanded Community Finance Portal scope | Portal is the community's ongoing relationship hub: receipt confirmation + doc upload, expense/application submission, personal messages to supporters, extensible future content |
+| Confirmed auth method | Magic link via Supabase Auth (fallback: Gmail OAuth if conflict) |
+
+#### 🟡 Decisions Made This Session
+| Decision | Choice |
+|---|---|
+| Stage 3 confirmation | Community-confirmed via portal — community rep uploads receipt docs; admin reviews and promotes to `verified` |
+| PayPal auto-verification | Out of scope — requires transaction-level API access overhead not worth taking on |
+| Transparency page layout | Global aggregation (top) + up to 3 community comparison cards (bottom) |
+| Community Finance Portal scope | Full hub: receipt docs, expense records, supporter messages, future extensible content |
+| Portal auth | Magic link to submission email |
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Write and commit `docs/architecture/transparency-page.md`** — full spec with all decisions baked in; two open questions marked resolved
+- [ ] **Write and commit `docs/architecture/community-finance-portal.md`** — new architecture doc for the expanded portal scope
+- [ ] **Add both new docs to `documentation_catalog`** in Supabase
+- [ ] **Build `public.community_financials` table** — stores community expense/application records with approval status
+- [ ] **Build Community Finance Portal** — magic-link-gated form for community reps to submit receipt confirmation, expense records, and messages
+- [ ] **Build Admin Finance Verification panel** — new admin panel section to review, approve, and publish finance submissions
+- [ ] **Build `transparency.html`** — public page rendering the four-stage pipeline per community
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+1. **Commit `docs/architecture/transparency-page.md`** — write and push the full architecture doc with all scoped decisions
+2. **Commit `docs/architecture/community-finance-portal.md`** — document the expanded portal scope
+3. **Update `documentation_catalog`** — add both new docs to Supabase catalog
+4. **Begin build** — `public.community_financials` table migration is the first concrete build step
+
+#### 📚 Commits & Migrations This Session
+| Reference | What Changed |
+|---|---|
+| No commits this session | Session was scoping and verification only — no production code changes |
+
+---
+
 ### 🕒 May 27, 2026 — Session 11 (Evening)
-**Status at close:** Admin recognition wall panel complete and verified end-to-end; suppress flow confirmed working on public wall after query-level filter fix
+**Status at close:** Admin recognition wall panel complete and verified end-to-end; suppress/restore flow confirmed working on public wall
 
 #### ✅ Completed
 | Item | Notes |
