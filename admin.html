@@ -64,32 +64,7 @@
         <div id="reasons-manager" class="reasons-manager"></div>
       </section>
 
-      <!-- ═══ Community Digest Control Panel ═════════════════════════════════════════════════
-           This panel is the ONLY way to trigger the community digest email.
-           There is no automatic cron job. This is intentional.
-
-           Why manual?
-             Sending email to community contacts is a meaningful, visible action.
-             A human review step prevents accidental duplicate sends, ensures the
-             digest window is correct, and keeps the admin aware of outbound activity.
-
-           How it works:
-             1. The panel reads the most recent row in public.digest_log to determine
-                when the digest was last sent.
-             2. It calculates days elapsed since last run against the configured
-                schedule (every 3 days, starting May 27 2026).
-             3. If a send is due or overdue, a red "Run Now" button appears.
-             4. If a send is not yet due, a green countdown shows days remaining.
-             5. Clicking "Run Now" (or "Send Digest") POSTs to the
-                send-community-digest Edge Function with the current user's JWT.
-             6. On success, the panel refreshes and the new run_at is reflected.
-
-           To automate in the future:
-             Wire a Cloudflare Cron Trigger or GitHub Actions scheduled workflow
-             to POST to the Edge Function URL with a service-role JWT.
-             Change triggered_by to 'cron' in the digest_log insert inside the
-             Edge Function (send-community-digest/index.ts).
-      ═════════════════════════════════════════════════ -->
+      <!-- ═══ Community Digest Control Panel ══════════════════════════════════════════════════ -->
       <section class="form-section" id="digest-panel">
         <h3>Community Digest</h3>
         <p class="section-desc">
@@ -100,8 +75,6 @@
 
         <div class="digest-status" id="digest-status-block">
           <div class="digest-status__loading" id="digest-loading">Loading digest status&hellip;</div>
-
-          <!-- Populated by admin-digest.js once digest_log is read -->
           <div id="digest-status-content" hidden>
             <div class="digest-status__meta">
               <span>Schedule: <strong>every 3 days</strong></span>
@@ -109,7 +82,6 @@
               <span id="digest-next-due"></span>
             </div>
             <div class="digest-status__actions" style="margin-top:1rem;display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
-              <!-- Run Now button: red when overdue, primary when due, hidden when not yet due -->
               <button type="button" id="digest-run-btn" class="btn" hidden>Send Digest</button>
               <span id="digest-countdown" class="digest-countdown"></span>
             </div>
@@ -117,7 +89,6 @@
           </div>
         </div>
 
-        <!-- Schedule configuration note -->
         <p class="field-hint" style="margin-top:1.25rem;">
           <strong>Schedule started:</strong> May 27, 2026 &mdash;
           Next send is due every 3 days from the last confirmed run.
@@ -126,18 +97,7 @@
         </p>
       </section>
 
-      <!-- ═══ Donations Panel ══════════════════════════════════════════════════════════════
-           Shows all recorded donation intents across all communities.
-           Surfaced here so admins can:
-             - Monitor pledge volume and receipt delivery
-             - Identify donations with no receipt sent (null receipt_sent_at)
-             - Manually retry the send-donation-receipt Edge Function for failures
-
-           Receipt column behavior:
-             - Green checkmark + timestamp: receipt sent successfully
-             - "No email": donor did not provide an email address — no action needed
-             - "Resend" button: receipt_sent_at is null and email exists — click to retry
-      ══════════════════════════════════════════════════════════════════════ -->
+      <!-- ═══ Donations Panel ══════════════════════════════════════════════════════════════ -->
       <section class="form-section" id="donations-panel">
         <h3>Donation Pledges</h3>
         <p class="section-desc">
@@ -147,21 +107,32 @@
         <div id="donations-panel-body"></div>
       </section>
 
-      <!-- ═══ Recognition Wall Panel ══════════════════════════════════════════════════════
-           Shows all recognition_wall entries across all communities.
+      <!-- ═══ Finance Verification Panel ══════════════════════════════════════════════════════
+           Shows all community_financials rows for admin review.
            Admins can:
-             - Suppress a donor entry from the public wall (is_visible = false)
-             - Restore a suppressed entry (is_visible = true)
-             - Mark a donor as featured (featured = true) for callout display
-             - Unfeature a donor (featured = false)
+             - Promote status through the pipeline: pending → self_reported → verified → approved
+             - View uploaded documents (generates a 60-second signed URL from community-docs bucket)
+             - Return a record to the submitter with notes (sets status to 'returned',
+               sends email via send-finance-return-email Edge Function, logs to admin_actions)
 
-           Suppressing hides the entry from public wall.html without deleting it.
-           Amount column only shows the stated amount if the donor opted in
-           (amount_visible_on_wall = true on the original donation).
+           Status flow:
+             pending → self_reported → verified → approved
+             Any status → returned (via Return to Submitter action)
 
-           sort_order column exists in the schema for future drag-and-drop reordering
-           but is not managed from this panel yet.
+           'returned' status is visually distinct — submitter receives email
+           explaining what is missing and a link back to portal.html.
       ══════════════════════════════════════════════════════════════════════ -->
+      <section class="form-section" id="finance-panel">
+        <h3>Finance Verification</h3>
+        <p class="section-desc">
+          Review community finance submissions — receipts, expenses, and messages. Promote records
+          through the verification pipeline or return them to the submitter with notes.
+          Only <strong>verified</strong> and <strong>approved</strong> records appear on the public transparency page.
+        </p>
+        <div id="finance-panel-body"></div>
+      </section>
+
+      <!-- ═══ Recognition Wall Panel ══════════════════════════════════════════════════════ -->
       <section class="form-section" id="wall-panel">
         <h3>Recognition Wall</h3>
         <p class="section-desc">
@@ -171,15 +142,7 @@
         <div id="wall-panel-body"></div>
       </section>
 
-      <!-- ═══ Admin Audit Log ══════════════════════════════════════════════════════════════
-           Shows all approve/reject actions taken by admins, newest first.
-           Sourced from public.admin_actions_log — a view joining:
-             - public.admin_actions (immutable audit table)
-             - public.submissions (for community_name)
-             - public.correction_reasons (to expand rejection_reason_ids into labels)
-
-           This panel is read-only. No actions can be taken from here.
-      ══════════════════════════════════════════════════════════════════════ -->
+      <!-- ═══ Admin Audit Log ══════════════════════════════════════════════════════════════ -->
       <section class="form-section" id="audit-log-panel">
         <h3>Admin Audit Log</h3>
         <p class="section-desc">
@@ -189,15 +152,11 @@
         <div id="audit-log-panel-body"></div>
       </section>
 
-      <!-- ═══ Developer Test Panel ════════════════════════════════════════════════════════════════════════
-           Visible only when ?dev=true is in the URL.
-           Lets admins trigger Edge Functions without recreating submissions.
-      ═══════════════════════════════════════════════════════════════════════ -->
+      <!-- ═══ Developer Test Panel ════════════════════════════════════════════════════════════════════════ -->
       <section id="dev-test-panel" class="form-section" style="display:none;border:2px dashed var(--color-warning, #d97706);">
         <h3>🧪 Developer Test Panel</h3>
         <p class="section-desc">Only visible at <code>admin.html?dev=true</code>. Use this to test Edge Functions and integrations without creating a real submission.</p>
 
-        <!-- Edge Function Triggers -->
         <div class="field-group" style="max-width:480px;">
           <label for="test-submission-id">Submission ID <span class="badge badge--optional">UUID</span></label>
           <input type="text" id="test-submission-id" placeholder="Paste a submission UUID here" />
@@ -213,12 +172,10 @@
 
         <hr style="margin:2rem 0;border:none;border-top:1px solid var(--color-border,#e2e8f0);" />
 
-        <!-- Test Data Manager -->
         <h4 style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--color-text-muted,#64748b);margin:0 0 0.5rem;">Test Data Manager</h4>
-        <p class="section-desc" style="margin-bottom:1.25rem;">Edit the fixtures below to create different test scenarios, then click <strong>Insert Test Submission</strong>. The UUID <code>00000000-0000-0000-0000-000000000001</code> is reserved for test records and is always deleted and re-inserted to stay current with your edits.</p>
+        <p class="section-desc" style="margin-bottom:1.25rem;">Edit the fixtures below to create different test scenarios, then click <strong>Insert Test Submission</strong>. The UUID <code>00000000-0000-0000-0000-000000000001</code> is reserved for test records.</p>
 
         <div style="display:grid;gap:1.25rem;">
-
           <div class="field-group">
             <label for="fixture-core">Core Submission (JSON)</label>
             <textarea id="fixture-core" rows="12" style="font-family:monospace;font-size:0.82rem;">{
@@ -257,7 +214,6 @@ contingency,Emergency Fund,300,,Unexpected costs</textarea>
             <textarea id="fixture-donations" rows="3" style="font-family:monospace;font-size:0.82rem;">method,handle_or_address,notes
 PayPal,test@example.com,Test PayPal account</textarea>
           </div>
-
         </div>
 
         <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:1.25rem;">
@@ -266,7 +222,6 @@ PayPal,test@example.com,Test PayPal account</textarea>
         </div>
 
         <div id="fixture-output" style="margin-top:1.25rem;padding:1rem;background:var(--color-surface-alt,#f8f8f8);border-radius:6px;font-family:monospace;font-size:0.85rem;white-space:pre-wrap;display:none;"></div>
-
       </section>
 
     </main>
@@ -283,6 +238,7 @@ PayPal,test@example.com,Test PayPal account</textarea>
   <script src="assets/js/admin.js" type="module"></script>
   <script src="assets/js/admin-digest.js" type="module"></script>
   <script src="assets/js/admin-donations.js" type="module"></script>
+  <script src="assets/js/admin-finance.js" type="module"></script>
   <script src="assets/js/admin-wall.js" type="module"></script>
   <script src="assets/js/admin-audit-log.js" type="module"></script>
   <script src="assets/js/admin-test-panel.js" type="module"></script>
