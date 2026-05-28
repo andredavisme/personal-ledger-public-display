@@ -26,7 +26,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_haKvwV0M7KMj4Qz69M6WGg_KmIfU-aI';
 
 initIntentModal();
 
-// ─── Load Data ────────────────────────────────────────────────────────────────
+// ─── Load Data ────────────────────────────────────────────────────────────────────
 async function loadCommunities() {
   const { data: submissions, error } = await supabase
     .from('submissions')
@@ -63,7 +63,7 @@ async function loadCommunities() {
   bindIntentButtons();
 }
 
-// ─── Card Builder ─────────────────────────────────────────────────────────────
+// ─── Card Builder ─────────────────────────────────────────────────────────────────
 function buildCard(s) {
   const article = document.createElement('article');
   article.className = 'community-card';
@@ -87,8 +87,8 @@ function buildCard(s) {
       </div>
     </section>
 
-    ${s.financials.length ? `<section class="community-card__section"><h4>Financial History</h4><p class="section-desc">Past income and expenses submitted by this community.</p>${buildTable(s.financials)}</section>` : ''}
-    ${s.budget.length ? `<section class="community-card__section"><h4>Budget Needs</h4><p class="section-desc">Items this community needs to purchase, expects to purchase, or is planning for.</p>${buildTable(s.budget)}</section>` : ''}
+    ${s.financials.length ? `<section class="community-card__section"><h4>Financial History</h4><p class="section-desc">Past income and expenses submitted by this community.</p>${buildTable(s.financials, ['name'])}</section>` : ''}
+    ${s.budget.length ? `<section class="community-card__section"><h4>Budget Needs</h4><p class="section-desc">Items this community needs to purchase, expects to purchase, or is planning for.</p>${buildTable(s.budget, ['item'])}</section>` : ''}
 
     <section class="community-card__section">
       <h4>Transparency</h4>
@@ -104,16 +104,20 @@ function buildCard(s) {
   return article;
 }
 
-// ─── Table Renderer ───────────────────────────────────────────────────────────
-function buildTable(rows) {
+// ─── Table Renderer ─────────────────────────────────────────────────────────────────
+// allowedCols: optional array of column names to include. If omitted, all non-system cols are shown.
+function buildTable(rows, allowedCols) {
   const skip    = ['id', 'submission_id', 'sort_order'];
-  const headers = Object.keys(rows[0]).filter(h => !skip.includes(h));
-  const head    = headers.map(h => `<th>${h.replace(/_/g, ' ')}</th>`).join('');
-  const body    = rows.map(row => `<tr>${headers.map(h => `<td>${esc(String(row[h] ?? ''))}</td>`).join('')}</tr>`).join('');
+  let headers   = Object.keys(rows[0]).filter(h => !skip.includes(h));
+  if (allowedCols && allowedCols.length) {
+    headers = headers.filter(h => allowedCols.includes(h));
+  }
+  const head = headers.map(h => `<th>${h.replace(/_/g, ' ')}</th>`).join('');
+  const body = rows.map(row => `<tr>${headers.map(h => `<td>${esc(String(row[h] ?? ''))}</td>`).join('')}</tr>`).join('');
   return `<div class="csv-table-wrap"><table class="csv-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
-// ─── Donation List Renderer ───────────────────────────────────────────────────
+// ─── Donation List Renderer ─────────────────────────────────────────────────────────────────
 // Each card shows ONE button: "I Intend to Donate".
 // Payment data is stored as JSON on the button and resolved to a URL at confirm time
 // so the amount entered in the intent form can be pre-filled in the PayPal link.
@@ -173,7 +177,7 @@ function buildDonationList(submissionId, rows) {
   }).join('')}</div>`;
 }
 
-// ─── Build payment button HTML at confirm time (so amount is available) ────────────────
+// ─── Build payment button HTML at confirm time (so amount is available) ──────────────────
 function buildPaymentButtonHtml(paymentData, amount) {
   if (!paymentData) return '';
 
@@ -207,7 +211,7 @@ function buildPaymentButtonHtml(paymentData, amount) {
   return '';
 }
 
-// ─── Intent Modal ─────────────────────────────────────────────────────────────
+// ─── Intent Modal ─────────────────────────────────────────────────────────────────
 function initIntentModal() {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = `
@@ -358,7 +362,7 @@ async function handleIntentSubmit(event) {
 
     if (error) throw error;
 
-    // ── Call send-donation-receipt Edge Function ──────────────────────────────
+    // ── Call send-donation-receipt Edge Function ────────────────────────────────────────────
     // Non-blocking: receipt/wall insert failure does not prevent the
     // confirmation screen from showing. Errors are logged to console only.
     if (inserted?.id) {
@@ -381,7 +385,7 @@ async function handleIntentSubmit(event) {
         console.error('[community] send-donation-receipt fetch error:', err);
       });
     }
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────────
 
     // Build payment button now that we have the amount
     const paymentEl = document.getElementById('intent-confirm-payment');
@@ -404,7 +408,7 @@ async function handleIntentSubmit(event) {
   }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────────────────
 function getMethodLabel(row, pairs) {
   const preferred = ['method', 'type', 'platform', 'provider', 'channel'];
   for (const key of preferred) {
