@@ -15,26 +15,16 @@
       <nav>
         <a href="index.html">Submit</a>
         <a href="community.html">Community Pages</a>
-        <a href="wall.html">Recognition Wall</a>
         <a href="transparency.html">Transparency</a>
+        <a href="wall.html">Recognition Wall</a>
+        <a href="portal.html" class="active">Portal</a>
+        <a href="admin.html" id="nav-admin-link">Admin</a>
       </nav>
     </div>
   </header>
 
   <main>
-
-    <!--
-      #portal-root is the single mount point for the entire portal.
-
-      BEFORE AUTH:
-        portal-auth.js renders the magic-link request or check-email screen here.
-
-      AFTER AUTH:
-        portal-auth.js clears this container and calls onAuthenticated(user, submissionId).
-        portal.js then renders the rep's portal content directly into #portal-root.
-    -->
     <div id="portal-root"></div>
-
   </main>
 
   <footer class="site-footer">
@@ -44,5 +34,6 @@
   </footer>
 
   <script src="assets/js/portal.js" type="module"></script>
+  <script src="assets/js/nav.js" type="module"></script>
 </body>
 </html>

@@ -17,11 +17,15 @@ a:hover { text-decoration: underline; }
   padding: 0 1.5rem;
 }
 
-/* === Header === */
+/* === Header (sticky) === */
 .site-header {
   background: #1a1a2e;
   color: #fff;
   padding: 1rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
 }
 .site-header .container {
   display: flex;
@@ -34,6 +38,9 @@ a:hover { text-decoration: underline; }
 .site-header nav a { color: #a0aec0; margin-left: 1.5rem; font-size: 0.9rem; }
 .site-header nav a.active,
 .site-header nav a:hover { color: #fff; text-decoration: none; }
+
+/* Admin nav link: hidden until auth confirmed by nav.js */
+#nav-admin-link { display: none; }
 
 /* === Auth Gate === */
 .auth-gate {

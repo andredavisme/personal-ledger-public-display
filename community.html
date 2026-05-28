@@ -15,8 +15,10 @@
       <nav>
         <a href="index.html">Submit</a>
         <a href="community.html" class="active">Community Pages</a>
+        <a href="transparency.html">Transparency</a>
         <a href="wall.html">Recognition Wall</a>
-        <a href="admin.html">Admin</a>
+        <a href="portal.html">Portal</a>
+        <a href="admin.html" id="nav-admin-link">Admin</a>
       </nav>
     </div>
   </header>
@@ -28,13 +30,11 @@
       <p class="section-desc">Each community listed here has submitted and had their information verified by our review team. Their financial picture, budget needs, and donation options are displayed exactly as submitted.</p>
     </section>
 
-    <!-- Loading / empty states -->
     <div id="community-loading" style="margin-top:2rem;color:#64748b;">Loading communities…</div>
-    <div id="community-empty"   style="display:none;margin-top:2rem;">
+    <div id="community-empty" style="display:none;margin-top:2rem;">
       <p style="color:#94a3b8;">No approved communities yet. <a href="index.html">Be the first to submit.</a></p>
     </div>
 
-    <!-- Community cards injected here -->
     <div id="community-list" style="margin-top:2rem;"></div>
 
   </main>
@@ -46,5 +46,6 @@
   </footer>
 
   <script src="assets/js/community.js" type="module"></script>
+  <script src="assets/js/nav.js" type="module"></script>
 </body>
 </html>

@@ -27,6 +27,9 @@
         <nav>
           <a href="index.html">Submit</a>
           <a href="community.html">Community Pages</a>
+          <a href="transparency.html">Transparency</a>
+          <a href="wall.html">Recognition Wall</a>
+          <a href="portal.html">Portal</a>
           <a href="admin.html" class="active">Admin</a>
         </nav>
         <button id="logout-btn" class="btn btn--small btn--secondary" style="margin-left:1.5rem;">Log Out</button>
@@ -64,7 +67,6 @@
         <div id="reasons-manager" class="reasons-manager"></div>
       </section>
 
-      <!-- ═══ Community Digest Control Panel ══════════════════════════════════════════════════ -->
       <section class="form-section" id="digest-panel">
         <h3>Community Digest</h3>
         <p class="section-desc">
@@ -72,7 +74,6 @@
           received since the last digest. <strong>This is a manual step.</strong> Run it on the
           configured schedule below. No email is sent automatically.
         </p>
-
         <div class="digest-status" id="digest-status-block">
           <div class="digest-status__loading" id="digest-loading">Loading digest status&hellip;</div>
           <div id="digest-status-content" hidden>
@@ -88,7 +89,6 @@
             <div id="digest-result" class="donation-message" hidden style="margin-top:1rem;"></div>
           </div>
         </div>
-
         <p class="field-hint" style="margin-top:1.25rem;">
           <strong>Schedule started:</strong> May 27, 2026 &mdash;
           Next send is due every 3 days from the last confirmed run.
@@ -97,7 +97,6 @@
         </p>
       </section>
 
-      <!-- ═══ Donations Panel ══════════════════════════════════════════════════════════════ -->
       <section class="form-section" id="donations-panel">
         <h3>Donation Pledges</h3>
         <p class="section-desc">
@@ -107,21 +106,6 @@
         <div id="donations-panel-body"></div>
       </section>
 
-      <!-- ═══ Finance Verification Panel ══════════════════════════════════════════════════════
-           Shows all community_financials rows for admin review.
-           Admins can:
-             - Promote status through the pipeline: pending → self_reported → verified → approved
-             - View uploaded documents (generates a 60-second signed URL from community-docs bucket)
-             - Return a record to the submitter with notes (sets status to 'returned',
-               sends email via send-finance-return-email Edge Function, logs to admin_actions)
-
-           Status flow:
-             pending → self_reported → verified → approved
-             Any status → returned (via Return to Submitter action)
-
-           'returned' status is visually distinct — submitter receives email
-           explaining what is missing and a link back to portal.html.
-      ══════════════════════════════════════════════════════════════════════ -->
       <section class="form-section" id="finance-panel">
         <h3>Finance Verification</h3>
         <p class="section-desc">
@@ -132,7 +116,6 @@
         <div id="finance-panel-body"></div>
       </section>
 
-      <!-- ═══ Recognition Wall Panel ══════════════════════════════════════════════════════ -->
       <section class="form-section" id="wall-panel">
         <h3>Recognition Wall</h3>
         <p class="section-desc">
@@ -142,7 +125,6 @@
         <div id="wall-panel-body"></div>
       </section>
 
-      <!-- ═══ Admin Audit Log ══════════════════════════════════════════════════════════════ -->
       <section class="form-section" id="audit-log-panel">
         <h3>Admin Audit Log</h3>
         <p class="section-desc">
@@ -152,7 +134,6 @@
         <div id="audit-log-panel-body"></div>
       </section>
 
-      <!-- ═══ Developer Test Panel ════════════════════════════════════════════════════════════════════════ -->
       <section id="dev-test-panel" class="form-section" style="display:none;border:2px dashed var(--color-warning, #d97706);">
         <h3>🧪 Developer Test Panel</h3>
         <p class="section-desc">Only visible at <code>admin.html?dev=true</code>. Use this to test Edge Functions and integrations without creating a real submission.</p>
@@ -201,7 +182,7 @@ income,Test Grant,1000,Annual test grant
 expense,Test Supplies,250,Office supplies</textarea>
           </div>
 
-          <div class="field-group":
+          <div class="field-group">
             <label for="fixture-budget">Budget CSV (status, item, estimated_cost, actual_cost, notes)</label>
             <textarea id="fixture-budget" rows="5" style="font-family:monospace;font-size:0.82rem;">status,item,estimated_cost,actual_cost,notes
 purchased,Test Equipment,500,480,Already acquired
