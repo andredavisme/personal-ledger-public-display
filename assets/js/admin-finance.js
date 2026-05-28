@@ -9,28 +9,67 @@
  *   - View Doc: generate signed URL from community-docs storage and open
  *   - Return to Submitter: modal with notes textarea → send-finance-return-email
  *     edge function → status set to 'returned' in DB
+ *
+ * Event delegation is on `document` so it survives innerHTML re-renders.
  */
 
 import supabase from './supabase.js';
 
-const EDGE_BASE   = 'https://hhyhulqngdkwsxhymmcd.supabase.co/functions/v1';
-const BUCKET      = 'community-docs';
-const STATUS_FLOW = ['pending', 'self_reported', 'verified', 'approved'];
-const STATUS_NEXT = { pending: 'self_reported', self_reported: 'verified', verified: 'approved' };
+const EDGE_BASE    = 'https://hhyhulqngdkwsxhymmcd.supabase.co/functions/v1';
+const BUCKET       = 'community-docs';
+const STATUS_NEXT  = { pending: 'self_reported', self_reported: 'verified', verified: 'approved' };
 const STATUS_LABEL = {
-  pending:      'Pending',
-  self_reported:'Self-Reported',
-  verified:     'Verified',
-  approved:     'Approved',
-  returned:     'Returned',
+  pending:       'Pending',
+  self_reported: 'Self-Reported',
+  verified:      'Verified',
+  approved:      'Approved',
+  returned:      'Returned',
 };
 const PROMOTE_LABEL = {
-  pending:      'Mark Self-Reported',
-  self_reported:'Mark Verified',
-  verified:     'Approve',
+  pending:       'Mark Self-Reported',
+  self_reported: 'Mark Verified',
+  verified:      'Approve',
 };
 
-document.addEventListener('admin:ready', () => loadFinancePanel());
+// Persists across re-renders — set when Return modal opens
+let activeReturnId = null;
+
+// Wire document-level delegation once only
+let delegationWired = false;
+
+document.addEventListener('admin:ready', () => {
+  wireDelegation();
+  loadFinancePanel();
+});
+
+function wireDelegation() {
+  if (delegationWired) return;
+  delegationWired = true;
+
+  document.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+
+    // Scope to finance panel only
+    if (!btn.closest('#finance-panel')) return;
+
+    const action = btn.dataset.action;
+    const id     = btn.dataset.id;
+
+    if (action === 'promote') {
+      await handlePromote(btn, id, btn.dataset.next);
+    } else if (action === 'viewdoc') {
+      await handleViewDoc(btn, btn.dataset.path);
+    } else if (action === 'return') {
+      activeReturnId = id;
+      openReturnModal(btn.dataset.type, btn.dataset.desc, btn.dataset.date);
+    } else if (action === 'finance-return-send') {
+      if (activeReturnId) await handleReturn(activeReturnId);
+    } else if (action === 'finance-return-cancel') {
+      closeReturnModal();
+    }
+  });
+}
 
 async function loadFinancePanel() {
   const container = document.getElementById('finance-panel-body');
@@ -51,7 +90,6 @@ async function loadFinancePanel() {
     return;
   }
 
-  const rows = data.map(row => buildRow(row)).join('');
   container.innerHTML = `
     <div class="donations-table-wrap">
       <table class="donations-table">
@@ -66,7 +104,7 @@ async function loadFinancePanel() {
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody>${data.map(buildRow).join('')}</tbody>
       </table>
     </div>
     <div id="finance-return-modal" class="finance-modal" hidden>
@@ -78,14 +116,12 @@ async function loadFinancePanel() {
           <textarea id="finance-return-notes" rows="4" placeholder="Explain what information is missing or needs correction…"></textarea>
         </div>
         <div style="display:flex;gap:0.75rem;margin-top:1rem;">
-          <button type="button" id="finance-return-send-btn" class="btn btn--primary">Send &amp; Return</button>
-          <button type="button" id="finance-return-cancel-btn" class="btn btn--secondary">Cancel</button>
+          <button type="button" data-action="finance-return-send" class="btn btn--primary" id="finance-return-send-btn">Send &amp; Return</button>
+          <button type="button" data-action="finance-return-cancel" class="btn btn--secondary">Cancel</button>
         </div>
         <div id="finance-return-error" class="field-hint" style="color:#b91c1c;margin-top:0.5rem;"></div>
       </div>
     </div>`;
-
-  wireActions(container, data);
 }
 
 function buildRow(row) {
@@ -95,7 +131,8 @@ function buildRow(row) {
   const statusLabel = STATUS_LABEL[status] || status;
   const amountStr   = row.amount != null ? `$${Number(row.amount).toFixed(2)} ${row.currency || 'USD'}` : '—';
   const nextStatus  = STATUS_NEXT[status];
-  const promoteBtn  = nextStatus
+
+  const promoteBtn = nextStatus
     ? `<button type="button" class="btn btn--small btn--primary" data-action="promote" data-id="${escHtml(row.id)}" data-next="${nextStatus}">${PROMOTE_LABEL[status]}</button>`
     : '';
   const docBtn = row.document_url
@@ -115,35 +152,6 @@ function buildRow(row) {
     </tr>`;
 }
 
-function wireActions(container, data) {
-  let activeReturnId = null;
-
-  container.addEventListener('click', async e => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const action = btn.dataset.action;
-    const id     = btn.dataset.id;
-
-    if (action === 'promote') {
-      await handlePromote(btn, id, btn.dataset.next);
-    } else if (action === 'viewdoc') {
-      await handleViewDoc(btn, btn.dataset.path);
-    } else if (action === 'return') {
-      activeReturnId = id;
-      openReturnModal(btn.dataset.type, btn.dataset.desc, btn.dataset.date);
-    } else if (action === 'return-send') {
-      await handleReturn(activeReturnId);
-    } else if (action === 'return-cancel') {
-      closeReturnModal();
-    }
-  });
-
-  document.getElementById('finance-return-send-btn')?.addEventListener('click', async () => {
-    if (activeReturnId) await handleReturn(activeReturnId);
-  });
-  document.getElementById('finance-return-cancel-btn')?.addEventListener('click', closeReturnModal);
-}
-
 async function handlePromote(btn, id, nextStatus) {
   btn.disabled = true;
   btn.textContent = 'Saving…';
@@ -156,7 +164,7 @@ async function handlePromote(btn, id, nextStatus) {
   if (error) {
     showToast('Update failed: ' + error.message, 'error');
     btn.disabled = false;
-    btn.textContent = PROMOTE_LABEL[STATUS_FLOW[STATUS_FLOW.indexOf(nextStatus) - 1]];
+    btn.textContent = PROMOTE_LABEL[Object.keys(STATUS_NEXT).find(k => STATUS_NEXT[k] === nextStatus)];
     return;
   }
 
@@ -176,7 +184,7 @@ async function handleViewDoc(btn, storagePath) {
   btn.textContent = 'View Doc';
 
   if (error || !data?.signedUrl) {
-    showToast('Could not generate doc link: ' + (error?.message || 'Unknown error'), 'error');
+    showToast('Could not generate doc link: ' + (error?.message || 'No URL returned'), 'error');
     return;
   }
   window.open(data.signedUrl, '_blank');
@@ -197,11 +205,12 @@ function openReturnModal(type, desc, date) {
 function closeReturnModal() {
   const modal = document.getElementById('finance-return-modal');
   if (modal) modal.hidden = true;
+  activeReturnId = null;
 }
 
 async function handleReturn(financeId) {
-  const notes  = document.getElementById('finance-return-notes')?.value?.trim();
-  const errEl  = document.getElementById('finance-return-error');
+  const notes   = document.getElementById('finance-return-notes')?.value?.trim();
+  const errEl   = document.getElementById('finance-return-error');
   const sendBtn = document.getElementById('finance-return-send-btn');
 
   errEl.textContent = '';
@@ -240,7 +249,7 @@ async function handleReturn(financeId) {
   }
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function escHtml(str) {
   if (str == null) return '';
   return String(str)
@@ -258,12 +267,12 @@ function showToast(message, type = 'success') {
   if (!c) {
     c = document.createElement('div');
     c.id = 'toast-container';
-    c.style.cssText = 'position:fixed;bottom:var(--space-6);right:var(--space-6);z-index:9999;display:flex;flex-direction:column;gap:var(--space-2);';
+    c.style.cssText = 'position:fixed;bottom:var(--space-6,1.5rem);right:var(--space-6,1.5rem);z-index:9999;display:flex;flex-direction:column;gap:0.5rem;';
     document.body.appendChild(c);
   }
   const t = document.createElement('div');
   t.className = `notice notice--${type === 'error' ? 'warning' : 'success'} toast`;
-  t.style.cssText = 'min-width:260px;max-width:380px;box-shadow:var(--shadow-lg);';
+  t.style.cssText = 'min-width:260px;max-width:380px;box-shadow:var(--shadow-lg,0 4px 20px rgba(0,0,0,.15));';
   t.textContent = message;
   c.appendChild(t);
   setTimeout(() => t.remove(), 4000);
