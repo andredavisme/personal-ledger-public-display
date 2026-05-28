@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signing you in…</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: system-ui, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      max-width: 360px;
+      width: 100%;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #1e40af;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1.25rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    h2 { margin: 0 0 0.5rem; font-size: 1.2rem; }
+    p  { margin: 0; color: #64748b; font-size: 0.9rem; }
+    .error { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner" id="spinner"></div>
+    <h2 id="title">Signing you in…</h2>
+    <p id="message">Please wait while we verify your link.</p>
+  </div>
+
+  <script type="module">
+    import supabase from '../assets/js/supabase.js';
+
+    const params      = new URLSearchParams(window.location.search);
+    const token_hash  = params.get('token_hash');
+    const type        = params.get('type') || 'magiclink';
+    const next        = params.get('next') || '/';
+
+    const titleEl   = document.getElementById('title');
+    const messageEl = document.getElementById('message');
+    const spinnerEl = document.getElementById('spinner');
+
+    function showError(msg) {
+      spinnerEl.style.display = 'none';
+      titleEl.textContent = 'Sign-in failed';
+      messageEl.className = 'error';
+      messageEl.textContent = msg || 'The link may have expired. Please request a new one.';
+    }
+
+    if (!token_hash) {
+      showError('Invalid link — no token found.');
+    } else {
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash,
+        type: type === 'magiclink' ? 'magiclink' : type,
+      });
+
+      if (error) {
+        showError(error.message);
+      } else {
+        // Redirect to the originating panel
+        window.location.replace(next);
+      }
+    }
+  </script>
+</body>
+</html>
