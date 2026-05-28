@@ -4,15 +4,16 @@
  * - No auth required (anon key, public data only)
  * - Loads all community_financials joined to submissions.community_name
  * - Community filter: multi-select chips, max 3
- * - Type filter: single-select buttons
- * - Four Chart.js visualizations driven by filter state
- * - Community record cards below charts
+ * - Type filter: single-select buttons (income, expense, receipt — no message)
+ * - Four Chart.js visualizations driven by filter state (messages excluded)
+ * - Community Messages log: always visible, scoped to selected communities
+ * - Community record cards below messages
  */
 
 import supabase from './supabase.js';
 
 // ─── State ──────────────────────────────────────────────────────────────────
-let ALL_ROWS       = [];   // raw rows from Supabase
+let ALL_ROWS        = [];  // raw rows from Supabase
 let ALL_COMMUNITIES = [];  // unique community names
 let selectedCommunities = new Set(); // max 3
 let selectedType = 'all';
@@ -40,6 +41,9 @@ const STATUS_LABEL = {
   approved:      'Approved',
 };
 
+// Financial types only — messages are handled separately
+const FINANCIAL_TYPES = ['income', 'expense', 'receipt'];
+
 // ─── Init ──────────────────────────────────────────────────────────────────
 async function init() {
   const { data, error } = await supabase
@@ -62,7 +66,6 @@ async function init() {
   buildCommunityFilter();
   wireTypeFilter();
 
-  // Select first community by default
   if (ALL_COMMUNITIES.length > 0) {
     selectedCommunities.add(ALL_COMMUNITIES[0]);
     refreshChips();
@@ -71,7 +74,7 @@ async function init() {
   render();
 }
 
-// ─── Community filter chips ─────────────────────────────────────────────────────────
+// ─── Community filter chips ─────────────────────────────────────────────────
 function buildCommunityFilter() {
   const wrap = document.getElementById('community-filter');
   wrap.innerHTML = ALL_COMMUNITIES.map(name => {
@@ -86,7 +89,7 @@ function buildCommunityFilter() {
     if (selectedCommunities.has(name)) {
       selectedCommunities.delete(name);
     } else {
-      if (selectedCommunities.size >= 3) return; // max 3
+      if (selectedCommunities.size >= 3) return;
       selectedCommunities.add(name);
     }
     refreshChips();
@@ -103,7 +106,7 @@ function refreshChips() {
   });
 }
 
-// ─── Type filter ──────────────────────────────────────────────────────────────────
+// ─── Type filter ─────────────────────────────────────────────────────────────
 function wireTypeFilter() {
   document.getElementById('type-filter').addEventListener('click', e => {
     const btn = e.target.closest('.tp-type-btn');
@@ -114,12 +117,22 @@ function wireTypeFilter() {
   });
 }
 
-// ─── Filtered data helpers ─────────────────────────────────────────────────────────────
-function filteredRows() {
+// ─── Filtered data helpers ────────────────────────────────────────────────────
+// Financial rows only (no messages) — used for charts and record cards
+function filteredFinancialRows() {
   return ALL_ROWS.filter(r => {
+    if (r.type === 'message') return false;
     const communityMatch = selectedCommunities.size === 0 || selectedCommunities.has(r.community);
     const typeMatch = selectedType === 'all' || r.type === selectedType;
     return communityMatch && typeMatch;
+  });
+}
+
+// Message rows — scoped to selected communities only, type filter ignored
+function filteredMessageRows() {
+  return ALL_ROWS.filter(r => {
+    if (r.type !== 'message') return false;
+    return selectedCommunities.size === 0 || selectedCommunities.has(r.community);
   });
 }
 
@@ -129,13 +142,14 @@ function activeCommunities() {
     : ALL_COMMUNITIES.slice(0, 1);
 }
 
-// ─── Main render ──────────────────────────────────────────────────────────────────
+// ─── Main render ──────────────────────────────────────────────────────────────
 function render() {
   renderCharts();
+  renderMessages();
   renderCards();
 }
 
-// ─── Charts ──────────────────────────────────────────────────────────────────
+// ─── Charts ───────────────────────────────────────────────────────────────────
 function destroyChart(key) {
   if (charts[key]) { charts[key].destroy(); delete charts[key]; }
 }
@@ -147,17 +161,15 @@ function renderCharts() {
   renderTypeBreakdownChart();
 }
 
-// Chart 1: Income vs Expenses (approved amounts + pending overlay)
+// Chart 1: Income vs Expenses
 function renderIncomeExpenseChart() {
   destroyChart('incomeExpense');
   const communities = activeCommunities();
-  const rows = filteredRows();
-
-  const approvedTypes = ['income', 'expense', 'receipt'];
-  const labels = communities;
+  const rows = filteredFinancialRows();
 
   const datasets = [];
-  approvedTypes.forEach(type => {
+  FINANCIAL_TYPES.forEach((type, colorIdx) => {
+    const colors = COMMUNITY_COLORS;
     const approvedData = communities.map(c =>
       rows.filter(r => r.community === c && r.type === type && ['verified','approved'].includes(r.status))
           .reduce((s, r) => s + (Number(r.amount) || 0), 0)
@@ -166,10 +178,6 @@ function renderIncomeExpenseChart() {
       rows.filter(r => r.community === c && r.type === type && ['pending','returned','self_reported'].includes(r.status))
           .reduce((s, r) => s + (Number(r.amount) || 0), 0)
     );
-
-    const colorIdx = approvedTypes.indexOf(type);
-    const colors = [COMMUNITY_COLORS[0], COMMUNITY_COLORS[1], COMMUNITY_COLORS[2]];
-
     datasets.push({
       label: capitalize(type) + ' (Approved)',
       data: approvedData,
@@ -193,7 +201,7 @@ function renderIncomeExpenseChart() {
     document.getElementById('chart-income-expense'),
     {
       type: 'bar',
-      data: { labels, datasets },
+      data: { labels: communities, datasets },
       options: {
         responsive: true,
         maintainAspectRatio: true,
@@ -207,10 +215,10 @@ function renderIncomeExpenseChart() {
   );
 }
 
-// Chart 2: Pipeline donut (all statuses, selected communities)
+// Chart 2: Pipeline donut (financial records only)
 function renderPipelineChart() {
   destroyChart('pipeline');
-  const rows = filteredRows();
+  const rows = filteredFinancialRows();
   const counts = STATUS_ORDER.map(s => rows.filter(r => r.status === s).length);
   const hasData = counts.some(c => c > 0);
 
@@ -222,12 +230,8 @@ function renderPipelineChart() {
         labels: STATUS_ORDER.map(s => STATUS_LABEL[s]),
         datasets: [{
           data: hasData ? counts : [1],
-          backgroundColor: hasData
-            ? STATUS_ORDER.map(s => STATUS_COLORS[s].bg)
-            : ['#e2e8f0'],
-          borderColor: hasData
-            ? STATUS_ORDER.map(s => STATUS_COLORS[s].border)
-            : ['#cbd5e1'],
+          backgroundColor: hasData ? STATUS_ORDER.map(s => STATUS_COLORS[s].bg) : ['#e2e8f0'],
+          borderColor:     hasData ? STATUS_ORDER.map(s => STATUS_COLORS[s].border) : ['#cbd5e1'],
           borderWidth: 2,
         }],
       },
@@ -248,18 +252,15 @@ function renderPipelineChart() {
   );
 }
 
-// Chart 3: Submission timeline (records per month)
+// Chart 3: Submission timeline (financial records only)
 function renderTimelineChart() {
   destroyChart('timeline');
-  const rows = filteredRows();
+  const rows = filteredFinancialRows();
   const communities = activeCommunities();
 
-  // Build sorted month labels across all rows
   const monthSet = new Set(rows.map(r => r.submitted_at?.slice(0, 7)).filter(Boolean));
   const months = [...monthSet].sort();
-  if (months.length === 0) {
-    months.push(new Date().toISOString().slice(0, 7));
-  }
+  if (months.length === 0) months.push(new Date().toISOString().slice(0, 7));
 
   const datasets = communities.map((c, i) => {
     const color = COMMUNITY_COLORS[i % 3];
@@ -297,7 +298,10 @@ function renderTimelineChart() {
     {
       type: 'line',
       data: {
-        labels: months.map(m => { const [y, mo] = m.split('-'); return new Date(y, mo - 1).toLocaleString('en-US', { month: 'short', year: '2-digit' }); }),
+        labels: months.map(m => {
+          const [y, mo] = m.split('-');
+          return new Date(y, mo - 1).toLocaleString('en-US', { month: 'short', year: '2-digit' });
+        }),
         datasets,
       },
       options: {
@@ -313,17 +317,17 @@ function renderTimelineChart() {
   );
 }
 
-// Chart 4: Type breakdown donut
+// Chart 4: Type breakdown donut (financial types only)
 function renderTypeBreakdownChart() {
   destroyChart('types');
-  const rows = filteredRows();
-  const types = ['income', 'expense', 'receipt', 'message', 'other'];
+  const rows = filteredFinancialRows();
+  const types = [...FINANCIAL_TYPES, 'other'];
   const counts = types.map(t => rows.filter(r => r.type === t).length);
   const activeTypes  = types.filter((_, i) => counts[i] > 0);
   const activeCounts = counts.filter(c => c > 0);
   const hasData = activeCounts.length > 0;
 
-  const palette = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#94a3b8'];
+  const palette = ['#3b82f6','#10b981','#f59e0b','#94a3b8'];
 
   charts['types'] = new Chart(
     document.getElementById('chart-types'),
@@ -355,10 +359,42 @@ function renderTypeBreakdownChart() {
   );
 }
 
-// ─── Record cards ──────────────────────────────────────────────────────────────────
+// ─── Community Messages log ───────────────────────────────────────────────────
+function renderMessages() {
+  const container = document.getElementById('messages-container');
+  const communities = activeCommunities();
+  const msgRows = filteredMessageRows();
+
+  // Build per-community logs
+  const sections = communities.map((community, ci) => {
+    const communityMsgs = msgRows
+      .filter(r => r.community === community)
+      .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+
+    if (communityMsgs.length === 0) return '';
+
+    const color = COMMUNITY_COLORS[ci % 3].border;
+    const items = communityMsgs.map(r => `
+      <li class="tp-msg-item">
+        <span class="tp-msg-date">${formatDate(r.submitted_at)}</span>
+        <span class="tp-msg-note">${escHtml(r.description || '—')}</span>
+      </li>`).join('');
+
+    return `
+      <div class="tp-messages__block" style="--community-color:${color}">
+        <h3 class="tp-messages__title">${escHtml(community)} — Community Messages</h3>
+        <ul class="tp-msg-list">${items}</ul>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = sections ||
+    '<p class="tp-empty">No messages for the selected communities.</p>';
+}
+
+// ─── Record cards ─────────────────────────────────────────────────────────────
 function renderCards() {
   const container = document.getElementById('records-container');
-  const rows = filteredRows();
+  const rows = filteredFinancialRows();
   const communities = activeCommunities();
 
   if (rows.length === 0) {
@@ -372,8 +408,7 @@ function renderCards() {
 
     const color = COMMUNITY_COLORS[ci % 3].border;
 
-    // Totals: approved/verified only
-    const approvedIncome  = communityRows.filter(r => ['income'].includes(r.type) && ['verified','approved'].includes(r.status)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const approvedIncome  = communityRows.filter(r => r.type === 'income' && ['verified','approved'].includes(r.status)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const approvedExpense = communityRows.filter(r => ['expense','receipt'].includes(r.type) && ['verified','approved'].includes(r.status)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const pendingCount    = communityRows.filter(r => ['pending','returned','self_reported'].includes(r.status)).length;
 
