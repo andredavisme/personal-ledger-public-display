@@ -26,6 +26,68 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 29, 2026 — Session 23
+**Status at close:** Documentation audit and correction pass completed across tutorial, architecture, infrastructure, project reference, and README. Docs now reflect current Cloudflare + Supabase architecture, `public` schema, `submissions.email` auth scoping, and current project surfaces.
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Tutorial Segment 5 completed | Added Concept Check + Milestone to `docs/tutorial/02b-cors-and-browser-security.md`; updated `docs/tutorial/README.md` to reflect full 3-part structure and milestone column |
+| Architecture folder audited | Read and reviewed all 6 files in `docs/architecture` |
+| `community-finance-portal.md` corrected twice | First pass: removed stale `moderator` role reference and added role-drift note; second pass: fixed incorrect `contact_email` reference to live `submissions.email` after Supabase verification |
+| `correction-reasons.md` expanded | Added header/date/status, explicit `public` schema note, full table definition, and related files |
+| `intake-form.md` refreshed | Added header/date/status, intro note, related files |
+| `page-outline.md` corrected | Replaced stale `ledger` schema references with `public`; added schema note, header/date/status, related files |
+| Infrastructure folder fully rewritten | `auth.md` now reflects live Supabase Auth; `deployment.md` now reflects live Cloudflare Pages; `email.md` received header/date/status and related-file cleanup |
+| `project-reference.md` updated | Added `public.profiles`, new source files (`portal.html`, `transparency.html`, `portal.js`, `transparency.js`, `portal.css`), closed stale open items, updated date |
+| README fully rewritten | Now reflects all 5 project surfaces, full donor/portal/transparency flow, current repo structure, Cloudflare + Supabase stack, and `public` schema |
+| Live schema verification run | Queried Supabase `information_schema.columns` for `public.submissions`; confirmed email column is `email` and `contact_email` does not exist |
+
+#### 🟡 Decisions Made This Session
+| Decision | Choice |
+|---|---|
+| Infra docs historical handling | Old Netlify state preserved as **Historical Note**, but not described as current anywhere |
+| Auth scoping reference | Canonical submission email column is `public.submissions.email` |
+| Project README scope | README should describe the **current live platform**, not the original 3-page concept |
+| Project schema labeling | All docs should reference `public` schema only; `ledger` is legacy and should be treated as stale unless explicitly historical |
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Fill in real URLs on `about.html`** — "How this was Built", "207 Analytix", "André on LinkedIn" (all currently `href="#"`)
+- [ ] **Add About nav link to all other public pages** — once `about.html` links are filled
+- [ ] **Move Supabase anon key to Cloudflare Pages environment variables** — deferred; publishable key, not a security risk
+- [ ] **Build Community Finance Portal UI fully** — architecture is current, but project-reference still tracks portal build as open
+- [ ] **Build Admin Finance Verification panel fully**
+- [ ] **Build `transparency.html` fully** — docs are current; implementation remains open per project-reference
+- [ ] **Budget allocation audit log viewer** — `budget_allocations` rows accumulate but are not yet surfaced anywhere in portal UI |
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+| Some implementation-tracking open items may lag actual shipped UI state | Docs now more accurate, but future sessions should verify live pages before closing remaining build items |
+
+#### 📍 Where to Resume
+1. **Decide whether to continue doc cleanup or return to implementation work**
+2. **If implementation:** verify actual state of `portal.html`, `admin-finance.js`, and `transparency.html` against `project-reference.md` open items
+3. **If docs:** audit any remaining root/docs files not touched this session for stale Netlify / `ledger` / `contact_email` references
+4. **Provide real URLs** for the three `about.html` placeholder links
+5. **Add About nav link** across all public pages
+
+#### 📚 Commits & DB Changes This Session
+| Reference | What Changed |
+|---|---|
+| Commit `93904cc` | `docs/architecture/community-finance-portal.md` — removed stale `moderator` reference; added role-drift note |
+| Commit `aa2ea49` | `docs/architecture/correction-reasons.md` — header/date/status, schema clarification, table definition, related files |
+| Commit `32513cb` | `docs/architecture/intake-form.md` + `docs/architecture/page-outline.md` — header/date/status updates; `ledger` → `public` schema fixes |
+| Commit `b10ff1d` | `docs/infrastructure/auth.md`, `deployment.md`, `email.md` — full infra rewrite to current state |
+| Commit `de8eac2` | `docs/project-reference.md` updated; `community-finance-portal.md` fixed `contact_email` → `email` |
+| Commit `d3ed554` | `README.md` full rewrite — 5 surfaces, live flow, repo structure, current stack |
+| DB query | Verified `public.submissions` columns via `information_schema.columns`; canonical email column is `email` |
+| This commit | `docs/session-handoff.md` Session 23 closeout |
+
+---
+
 ### 🕒 May 29, 2026 — Session 22
 **Status at close:** Budget allocation panel live in portal; progress dividers live on community page; all RLS policies corrected and verified working end-to-end. Test data cleaned up.
 
