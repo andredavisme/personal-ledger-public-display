@@ -15,9 +15,6 @@ Before you can build anything, you need three things:
 
 All three are free to use at the level this project requires. All three are professional tools used by real companies. You are not learning on training wheels — you are learning on the same tools that developers use.
 
-> **Why Cloudflare Pages instead of Netlify?**
-> This tutorial originally used Netlify for hosting. During development, the free tier bandwidth limit was reached — and the site went offline. Cloudflare Pages has no bandwidth cap on its free tier, making it a more reliable choice for communities that cannot afford unexpected hosting bills. See Section 6 for the full story and the lesson behind it.
-
 ---
 
 ## Step 1 — Create a GitHub Account
@@ -49,7 +46,7 @@ You now have a place to store your code.
 
 ## Step 2 — Create a Cloudflare Pages Account
 
-Cloudflare Pages is where your application will live on the internet. It watches your GitHub repository and automatically publishes the latest version of your site every time you make a change. Unlike some other hosting services, Cloudflare Pages has **no bandwidth limit** on its free tier — meaning your site will not go offline if it gets traffic.
+Cloudflare Pages is where your application will live on the internet. It watches your GitHub repository and automatically publishes the latest version of your site every time you make a change. Cloudflare Pages has **no bandwidth limit** on its free tier — meaning your site will not go offline if it gets traffic, no matter how many people visit.
 
 1. Go to [pages.cloudflare.com](https://pages.cloudflare.com)
 2. Click **Sign up** and create a free Cloudflare account
@@ -60,6 +57,9 @@ Cloudflare Pages is where your application will live on the internet. It watches
 7. Click **Save and Deploy**
 
 Cloudflare will assign your site a URL like `community-ledger.pages.dev`. Write this down.
+
+> ### ⚠️ Watch Out — You May Land in the Wrong Flow
+> When you click "Start building" in the Cloudflare dashboard, it may drop you into a **Create a Worker** setup — a different Cloudflare product. If you see fields asking for API tokens, wrangler configurations, or deploy commands you do not recognize, stop. Back out and look for the **Pages** tab or link. You want Pages, not Workers. This is the interface being confusing, not you doing something wrong.
 
 > ### 💡 Help Your Future You — Note Your Site URL
 > When Cloudflare creates your site, it will give it a URL ending in `.pages.dev`. Write this URL down in your project reference document immediately. You can add a custom domain later from the Cloudflare dashboard if you want a more professional address.
