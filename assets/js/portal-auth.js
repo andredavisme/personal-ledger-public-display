@@ -11,8 +11,8 @@
  *   3. If no session → show the request-link screen
  *   4. User enters their submission email → we call signInWithOtp()
  *   5. Supabase emails a magic link to that address
- *   6. User clicks the link → lands back on portal.html with a token in the URL
- *   7. Supabase exchanges the token automatically → session established
+ *   6. User clicks the link → lands on auth/confirm.html which exchanges the token
+ *   7. auth/confirm.html redirects to /portal.html → session established
  *   8. We verify the session email exists in public.submissions (approved)
  *   9. If verified → call onAuthenticated(user, submissionId) and show the portal
  *  10. If not found but user is an ADMIN (password login) → show admin notice
@@ -24,10 +24,9 @@
  *   We check user.app_metadata.providers to distinguish the two.
  *
  * REDIRECT URL:
- *   Magic links must redirect to this page. Configure in Supabase Dashboard:
- *   Authentication → URL Configuration → Redirect URLs
- *   Add: https://personal-ledger-public-display.pages.dev/portal.html
- *   (and http://localhost:8080/portal.html for local dev)
+ *   Handled entirely by the Supabase Magic Link email template.
+ *   Template uses: {{ .SiteURL }}/auth/confirm.html?token_hash=...&next={{ .SiteURL }}/portal.html
+ *   No emailRedirectTo needed in signInWithOtp.
  */
 
 import supabase from './supabase.js';
@@ -202,12 +201,7 @@ const PortalAuth = (() => {
     btn.disabled = true;
     if (errorEl) errorEl.hidden = true;
 
-    const redirectTo = `${window.location.origin}/portal.html`;
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: redirectTo }
-    });
+    const { error } = await supabase.auth.signInWithOtp({ email });
 
     if (error) {
       btn.textContent = 'Send Sign-In Link';
@@ -225,9 +219,6 @@ const PortalAuth = (() => {
     _showLoadingScreen('Verifying your access…');
 
     // ── Admin bypass ──────────────────────────────────────────────────────
-    // If the session belongs to an admin (password login), don't run the
-    // submission lookup — just show the admin notice and stop here.
-    // This prevents the "Access Not Found" flash when an admin visits portal.html.
     if (_isAdminUser(user)) {
       _showAdminNoticeScreen(user.email);
       return;
