@@ -2,20 +2,27 @@
  * transparency.js — Public Financial Transparency Page
  *
  * - No auth required (anon key, public data only)
- * - Loads all community_financials joined to submissions.community_name
+ * - Loads community_financials joined to submissions.community_name
+ * - Aggregation rules:
+ *     income:           status = approved only
+ *     expense:          status = approved only
+ *     intended:         status = approved only; paid flag shown
+ *     intended_lower:   status = approved only (auto-created by admin)
+ *     intended_higher:  status = approved only (celebrated)
+ *     returned records: excluded from ALL aggregation and display
  * - Community filter: multi-select chips, max 3
- * - Type filter: single-select buttons (income, expense, receipt — no message)
- * - Four Chart.js visualizations driven by filter state (messages excluded)
- * - Community Messages log: always visible, scoped to selected communities
+ * - Type filter: All | Income | Expense | Intended
+ * - Four Chart.js visualizations
+ * - Community messages log (separate, always visible)
  * - Community record cards below messages
  */
 
 import supabase from './supabase.js';
 
 // ─── State ──────────────────────────────────────────────────────────────────
-let ALL_ROWS        = [];  // raw rows from Supabase
-let ALL_COMMUNITIES = [];  // unique community names
-let selectedCommunities = new Set(); // max 3
+let ALL_ROWS        = [];
+let ALL_COMMUNITIES = [];
+let selectedCommunities = new Set();
 let selectedType = 'all';
 let charts = {};
 
@@ -41,14 +48,27 @@ const STATUS_LABEL = {
   approved:      'Approved',
 };
 
-// Financial types only — messages are handled separately
-const FINANCIAL_TYPES = ['income', 'expense', 'receipt'];
+const TYPE_LABEL = {
+  income:          'Income',
+  expense:         'Expense',
+  intended:        'Intended',
+  intended_lower:  'Lowered Intention',
+  intended_higher: 'Increased Intention',
+  message:         'Message',
+};
+
+// Financial types shown in charts and record cards (no messages)
+const FINANCIAL_TYPES = ['income', 'expense', 'intended', 'intended_lower', 'intended_higher'];
+
+// Types shown when "Intended" filter is active
+const INTENDED_FAMILY = ['intended', 'intended_lower', 'intended_higher'];
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 async function init() {
   const { data, error } = await supabase
     .from('community_financials')
-    .select('id, type, status, amount, currency, description, submitted_at, submission_id, submissions(community_name)')
+    .select('id, type, status, amount, currency, description, submitted_at, submission_id, paid, paid_amount, paid_at, submissions(community_name)')
+    .neq('status', 'returned')   // returned records excluded entirely
     .order('submitted_at', { ascending: false });
 
   if (error || !data) {
@@ -86,9 +106,8 @@ function buildCommunityFilter() {
     const chip = e.target.closest('.tp-chip');
     if (!chip) return;
     const name = chip.dataset.community;
-    if (selectedCommunities.has(name)) {
-      selectedCommunities.delete(name);
-    } else {
+    if (selectedCommunities.has(name)) selectedCommunities.delete(name);
+    else {
       if (selectedCommunities.size >= 3) return;
       selectedCommunities.add(name);
     }
@@ -112,23 +131,25 @@ function wireTypeFilter() {
     const btn = e.target.closest('.tp-type-btn');
     if (!btn) return;
     selectedType = btn.dataset.type;
-    document.querySelectorAll('.tp-type-btn').forEach(b => b.classList.toggle('tp-type-btn--active', b === btn));
+    document.querySelectorAll('.tp-type-btn').forEach(b =>
+      b.classList.toggle('tp-type-btn--active', b === btn));
     render();
   });
 }
 
 // ─── Filtered data helpers ────────────────────────────────────────────────────
-// Financial rows only (no messages) — used for charts and record cards
 function filteredFinancialRows() {
   return ALL_ROWS.filter(r => {
     if (r.type === 'message') return false;
     const communityMatch = selectedCommunities.size === 0 || selectedCommunities.has(r.community);
-    const typeMatch = selectedType === 'all' || r.type === selectedType;
+    let typeMatch;
+    if (selectedType === 'all')      typeMatch = true;
+    else if (selectedType === 'intended') typeMatch = INTENDED_FAMILY.includes(r.type);
+    else                             typeMatch = r.type === selectedType;
     return communityMatch && typeMatch;
   });
 }
 
-// Message rows — scoped to selected communities only, type filter ignored
 function filteredMessageRows() {
   return ALL_ROWS.filter(r => {
     if (r.type !== 'message') return false;
@@ -161,41 +182,23 @@ function renderCharts() {
   renderTypeBreakdownChart();
 }
 
-// Chart 1: Income vs Expenses
+// Chart 1: Income vs Expenses vs Intended (approved only)
 function renderIncomeExpenseChart() {
   destroyChart('incomeExpense');
   const communities = activeCommunities();
-  const rows = filteredFinancialRows();
+  const rows = filteredFinancialRows().filter(r => r.status === 'approved');
 
-  const datasets = [];
-  FINANCIAL_TYPES.forEach((type, colorIdx) => {
-    const colors = COMMUNITY_COLORS;
-    const approvedData = communities.map(c =>
-      rows.filter(r => r.community === c && r.type === type && ['verified','approved'].includes(r.status))
+  const chartTypes = ['income', 'expense', 'intended'];
+  const datasets = chartTypes.map((type, i) => ({
+    label: TYPE_LABEL[type],
+    data: communities.map(c =>
+      rows.filter(r => r.community === c && r.type === type)
           .reduce((s, r) => s + (Number(r.amount) || 0), 0)
-    );
-    const pendingData = communities.map(c =>
-      rows.filter(r => r.community === c && r.type === type && ['pending','returned','self_reported'].includes(r.status))
-          .reduce((s, r) => s + (Number(r.amount) || 0), 0)
-    );
-    datasets.push({
-      label: capitalize(type) + ' (Approved)',
-      data: approvedData,
-      backgroundColor: colors[colorIdx].bg,
-      borderColor: colors[colorIdx].border,
-      borderWidth: 2,
-      stack: type,
-    });
-    datasets.push({
-      label: capitalize(type) + ' (Pending)',
-      data: pendingData,
-      backgroundColor: colors[colorIdx].pending,
-      borderColor: colors[colorIdx].border,
-      borderWidth: 1,
-      borderDash: [4, 4],
-      stack: type,
-    });
-  });
+    ),
+    backgroundColor: COMMUNITY_COLORS[i].bg,
+    borderColor:     COMMUNITY_COLORS[i].border,
+    borderWidth: 2,
+  }));
 
   charts['incomeExpense'] = new Chart(
     document.getElementById('chart-income-expense'),
@@ -207,19 +210,20 @@ function renderIncomeExpenseChart() {
         maintainAspectRatio: true,
         plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
         scales: {
-          x: { stacked: false, grid: { display: false } },
-          y: { stacked: false, beginAtZero: true, ticks: { callback: v => '$' + v.toLocaleString() } },
+          x: { grid: { display: false } },
+          y: { beginAtZero: true, ticks: { callback: v => '$' + v.toLocaleString() } },
         },
       },
     }
   );
 }
 
-// Chart 2: Pipeline donut (financial records only)
+// Chart 2: Pipeline donut (financial records, no returned)
 function renderPipelineChart() {
   destroyChart('pipeline');
-  const rows = filteredFinancialRows();
-  const counts = STATUS_ORDER.map(s => rows.filter(r => r.status === s).length);
+  const rows   = filteredFinancialRows();
+  const counts = STATUS_ORDER.filter(s => s !== 'returned').map(s => rows.filter(r => r.status === s).length);
+  const labels = STATUS_ORDER.filter(s => s !== 'returned');
   const hasData = counts.some(c => c > 0);
 
   charts['pipeline'] = new Chart(
@@ -227,11 +231,11 @@ function renderPipelineChart() {
     {
       type: 'doughnut',
       data: {
-        labels: STATUS_ORDER.map(s => STATUS_LABEL[s]),
+        labels: labels.map(s => STATUS_LABEL[s]),
         datasets: [{
           data: hasData ? counts : [1],
-          backgroundColor: hasData ? STATUS_ORDER.map(s => STATUS_COLORS[s].bg) : ['#e2e8f0'],
-          borderColor:     hasData ? STATUS_ORDER.map(s => STATUS_COLORS[s].border) : ['#cbd5e1'],
+          backgroundColor: hasData ? labels.map(s => STATUS_COLORS[s].bg) : ['#e2e8f0'],
+          borderColor:     hasData ? labels.map(s => STATUS_COLORS[s].border) : ['#cbd5e1'],
           borderWidth: 2,
         }],
       },
@@ -241,100 +245,72 @@ function renderPipelineChart() {
         cutout: '62%',
         plugins: {
           legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${ctx.label}: ${hasData ? ctx.raw : 0} record${ctx.raw !== 1 ? 's' : ''}`,
-            },
-          },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${hasData ? ctx.raw : 0} record${ctx.raw !== 1 ? 's' : ''}` } },
         },
       },
     }
   );
 }
 
-// Chart 3: Submission timeline (financial records only)
+// Chart 3: Submission timeline
 function renderTimelineChart() {
   destroyChart('timeline');
-  const rows = filteredFinancialRows();
+  const rows        = filteredFinancialRows();
   const communities = activeCommunities();
-
-  const monthSet = new Set(rows.map(r => r.submitted_at?.slice(0, 7)).filter(Boolean));
-  const months = [...monthSet].sort();
+  const monthSet    = new Set(rows.map(r => r.submitted_at?.slice(0, 7)).filter(Boolean));
+  const months      = [...monthSet].sort();
   if (months.length === 0) months.push(new Date().toISOString().slice(0, 7));
 
-  const datasets = communities.map((c, i) => {
+  const datasets = communities.flatMap((c, i) => {
     const color = COMMUNITY_COLORS[i % 3];
-    const approvedCounts = months.map(m =>
-      rows.filter(r => r.community === c && r.submitted_at?.startsWith(m) && ['verified','approved'].includes(r.status)).length
-    );
-    const pendingCounts = months.map(m =>
-      rows.filter(r => r.community === c && r.submitted_at?.startsWith(m) && ['pending','returned','self_reported'].includes(r.status)).length
-    );
     return [
       {
-        label: c + ' (Verified/Approved)',
-        data: approvedCounts,
-        borderColor: color.border,
-        backgroundColor: color.bg,
-        fill: true,
-        tension: 0.3,
-        pointRadius: 4,
+        label: c + ' (Approved)',
+        data: months.map(m => rows.filter(r => r.community === c && r.submitted_at?.startsWith(m) && r.status === 'approved').length),
+        borderColor: color.border, backgroundColor: color.bg, fill: true, tension: 0.3, pointRadius: 4,
       },
       {
         label: c + ' (Pending)',
-        data: pendingCounts,
-        borderColor: color.border,
-        backgroundColor: color.pending,
-        fill: true,
-        tension: 0.3,
-        pointRadius: 4,
-        borderDash: [5, 5],
+        data: months.map(m => rows.filter(r => r.community === c && r.submitted_at?.startsWith(m) && ['pending','self_reported','verified'].includes(r.status)).length),
+        borderColor: color.border, backgroundColor: color.pending, fill: true, tension: 0.3, pointRadius: 4, borderDash: [5, 5],
       },
     ];
-  }).flat();
+  });
 
   charts['timeline'] = new Chart(
     document.getElementById('chart-timeline'),
     {
       type: 'line',
       data: {
-        labels: months.map(m => {
-          const [y, mo] = m.split('-');
-          return new Date(y, mo - 1).toLocaleString('en-US', { month: 'short', year: '2-digit' });
-        }),
+        labels: months.map(m => { const [y, mo] = m.split('-'); return new Date(y, mo - 1).toLocaleString('en-US', { month: 'short', year: '2-digit' }); }),
         datasets,
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
+        responsive: true, maintainAspectRatio: true,
         plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
-        scales: {
-          x: { grid: { display: false } },
-          y: { beginAtZero: true, ticks: { stepSize: 1 } },
-        },
+        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { stepSize: 1 } } },
       },
     }
   );
 }
 
-// Chart 4: Type breakdown donut (financial types only)
+// Chart 4: Type breakdown donut
 function renderTypeBreakdownChart() {
   destroyChart('types');
-  const rows = filteredFinancialRows();
-  const types = [...FINANCIAL_TYPES, 'other'];
-  const counts = types.map(t => rows.filter(r => r.type === t).length);
-  const activeTypes  = types.filter((_, i) => counts[i] > 0);
+  const rows        = filteredFinancialRows();
+  const chartTypes  = [...FINANCIAL_TYPES, 'other'];
+  const counts      = chartTypes.map(t => rows.filter(r => (t === 'other' ? !FINANCIAL_TYPES.includes(r.type) : r.type === t)).length);
+  const activeTypes  = chartTypes.filter((_, i) => counts[i] > 0);
   const activeCounts = counts.filter(c => c > 0);
-  const hasData = activeCounts.length > 0;
-
-  const palette = ['#3b82f6','#10b981','#f59e0b','#94a3b8'];
+  const hasData      = activeCounts.length > 0;
+  const palette      = ['#3b82f6','#10b981','#f59e0b','#a78bfa','#f472b6','#94a3b8'];
 
   charts['types'] = new Chart(
     document.getElementById('chart-types'),
     {
       type: 'doughnut',
       data: {
-        labels: hasData ? activeTypes.map(capitalize) : ['No data'],
+        labels: hasData ? activeTypes.map(t => TYPE_LABEL[t] || capitalize(t)) : ['No data'],
         datasets: [{
           data: hasData ? activeCounts : [1],
           backgroundColor: hasData ? activeTypes.map((_, i) => palette[i % palette.length] + 'cc') : ['#e2e8f0'],
@@ -343,16 +319,10 @@ function renderTypeBreakdownChart() {
         }],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        cutout: '62%',
+        responsive: true, maintainAspectRatio: true, cutout: '62%',
         plugins: {
           legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${ctx.label}: ${hasData ? ctx.raw : 0} record${ctx.raw !== 1 ? 's' : ''}`,
-            },
-          },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${hasData ? ctx.raw : 0} record${ctx.raw !== 1 ? 's' : ''}` } },
         },
       },
     }
@@ -361,25 +331,20 @@ function renderTypeBreakdownChart() {
 
 // ─── Community Messages log ───────────────────────────────────────────────────
 function renderMessages() {
-  const container = document.getElementById('messages-container');
+  const container  = document.getElementById('messages-container');
   const communities = activeCommunities();
-  const msgRows = filteredMessageRows();
+  const msgRows    = filteredMessageRows();
 
-  // Build per-community logs
   const sections = communities.map((community, ci) => {
-    const communityMsgs = msgRows
-      .filter(r => r.community === community)
+    const msgs  = msgRows.filter(r => r.community === community)
       .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
-
-    if (communityMsgs.length === 0) return '';
-
+    if (msgs.length === 0) return '';
     const color = COMMUNITY_COLORS[ci % 3].border;
-    const items = communityMsgs.map(r => `
+    const items = msgs.map(r => `
       <li class="tp-msg-item">
         <span class="tp-msg-date">${formatDate(r.submitted_at)}</span>
         <span class="tp-msg-note">${escHtml(r.description || '—')}</span>
       </li>`).join('');
-
     return `
       <div class="tp-messages__block" style="--community-color:${color}">
         <h3 class="tp-messages__title">${escHtml(community)} — Community Messages</h3>
@@ -393,8 +358,8 @@ function renderMessages() {
 
 // ─── Record cards ─────────────────────────────────────────────────────────────
 function renderCards() {
-  const container = document.getElementById('records-container');
-  const rows = filteredFinancialRows();
+  const container  = document.getElementById('records-container');
+  const rows       = filteredFinancialRows();
   const communities = activeCommunities();
 
   if (rows.length === 0) {
@@ -405,26 +370,35 @@ function renderCards() {
   container.innerHTML = communities.map((community, ci) => {
     const communityRows = rows.filter(r => r.community === community);
     if (communityRows.length === 0) return '';
-
     const color = COMMUNITY_COLORS[ci % 3].border;
 
-    const approvedIncome  = communityRows.filter(r => r.type === 'income' && ['verified','approved'].includes(r.status)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const approvedExpense = communityRows.filter(r => ['expense','receipt'].includes(r.type) && ['verified','approved'].includes(r.status)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const pendingCount    = communityRows.filter(r => ['pending','returned','self_reported'].includes(r.status)).length;
+    const approvedIncome   = communityRows.filter(r => r.type === 'income'   && r.status === 'approved').reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const approvedExpense  = communityRows.filter(r => r.type === 'expense'  && r.status === 'approved').reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const approvedIntended = communityRows.filter(r => INTENDED_FAMILY.includes(r.type) && r.status === 'approved').reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const pendingCount     = communityRows.filter(r => ['pending','self_reported','verified'].includes(r.status)).length;
 
     const tableRows = communityRows.map(r => {
-      const isPending = ['pending','returned','self_reported'].includes(r.status);
-      const amountStr = r.amount != null && ['verified','approved'].includes(r.status)
-        ? `$${Number(r.amount).toFixed(2)}`
-        : r.amount != null
-          ? `<span class="tp-amount-pending" title="Pending verification">~$${Number(r.amount).toFixed(2)}</span>`
-          : '—';
+      const isPending  = ['pending','self_reported','verified'].includes(r.status);
+      const typeLabel  = TYPE_LABEL[r.type] || capitalize(r.type || '');
+      const isCelebrated = r.type === 'intended_higher';
+
+      // Paid badge for intended records
+      const paidBadge = (r.type === 'intended' && r.paid)
+        ? `<span class="tp-paid-badge">✓ Paid${r.paid_amount != null && Math.abs(Number(r.paid_amount) - Number(r.amount)) >= 0.01 ? ` ($${Number(r.paid_amount).toFixed(2)})` : ''}</span>`
+        : '';
+
+      const amountStr = r.amount != null
+        ? r.status === 'approved'
+          ? `$${Number(r.amount).toFixed(2)}`
+          : `<span class="tp-amount-pending" title="Pending verification">~$${Number(r.amount).toFixed(2)}</span>`
+        : '—';
+
       return `
-        <tr class="${isPending ? 'tp-row--pending' : ''}">
+        <tr class="${isPending ? 'tp-row--pending' : ''}${isCelebrated ? ' tp-row--celebrated' : ''}">
           <td>${formatDate(r.submitted_at)}</td>
-          <td><span class="tp-badge tp-badge--${escHtml(r.type)}">${escHtml(capitalize(r.type || '—'))}</span></td>
+          <td><span class="tp-badge tp-badge--${escHtml(r.type)}">${escHtml(typeLabel)}</span></td>
           <td>${escHtml(r.description || '—')}</td>
-          <td>${amountStr}</td>
+          <td>${amountStr} ${paidBadge}</td>
           <td><span class="tp-status tp-status--${escHtml(r.status)}">${STATUS_LABEL[r.status] || r.status}</span></td>
         </tr>`;
     }).join('');
@@ -436,14 +410,13 @@ function renderCards() {
           <div class="tp-community-totals">
             <span class="tp-total tp-total--income">Confirmed Income: <strong>$${approvedIncome.toFixed(2)}</strong></span>
             <span class="tp-total tp-total--expense">Confirmed Expenses: <strong>$${approvedExpense.toFixed(2)}</strong></span>
+            <span class="tp-total tp-total--intended">Intended: <strong>$${approvedIntended.toFixed(2)}</strong></span>
             ${pendingCount > 0 ? `<span class="tp-total tp-total--pending">${pendingCount} pending review</span>` : ''}
           </div>
         </div>
         <div class="tp-table-wrap">
           <table class="tp-table">
-            <thead>
-              <tr><th>Date</th><th>Type</th><th>Description</th><th>Amount</th><th>Status</th></tr>
-            </thead>
+            <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Amount</th><th>Status</th></tr></thead>
             <tbody>${tableRows}</tbody>
           </table>
         </div>

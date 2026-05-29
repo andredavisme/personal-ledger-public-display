@@ -23,7 +23,6 @@
 .tp-pipeline {
   display: flex;
   align-items: center;
-  gap: 0;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
@@ -85,11 +84,7 @@
 }
 
 /* Community chips */
-.tp-community-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
+.tp-community-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .tp-chip {
   padding: 0.3rem 0.85rem;
   border-radius: 999px;
@@ -110,7 +105,7 @@
 }
 
 /* Type buttons */
-.tp-type-btns  { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.tp-type-btns { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .tp-type-btn {
   padding: 0.3rem 0.85rem;
   border-radius: 999px;
@@ -158,18 +153,11 @@
   color: var(--color-text-muted, #64748b);
   margin-bottom: 1rem;
 }
-.tp-viz__canvas-wrap {
-  position: relative;
-  max-height: 260px;
-}
-.tp-viz__canvas-wrap canvas {
-  max-height: 260px;
-}
+.tp-viz__canvas-wrap { position: relative; max-height: 260px; }
+.tp-viz__canvas-wrap canvas { max-height: 260px; }
 
 /* Records section */
-.tp-records {
-  padding: 2.5rem 0 4rem;
-}
+.tp-records { padding: 2.5rem 0 4rem; }
 .tp-empty {
   color: var(--color-text-muted, #64748b);
   text-align: center;
@@ -207,19 +195,15 @@
   flex-wrap: wrap;
   gap: 0.5rem 1.25rem;
 }
-.tp-total {
-  font-size: 0.83rem;
-  color: var(--color-text-muted, #64748b);
-}
+.tp-total { font-size: 0.83rem; color: var(--color-text-muted, #64748b); }
 .tp-total strong { color: var(--color-text, #1e293b); }
-.tp-total--income  strong { color: #15803d; }
-.tp-total--expense strong { color: #b91c1c; }
-.tp-total--pending { color: #92400e; font-style: italic; }
+.tp-total--income   strong { color: #15803d; }
+.tp-total--expense  strong { color: #b91c1c; }
+.tp-total--intended strong { color: #1d4ed8; }
+.tp-total--pending  { color: #92400e; font-style: italic; }
 
 /* Records table */
-.tp-table-wrap {
-  overflow-x: auto;
-}
+.tp-table-wrap { overflow-x: auto; }
 .tp-table {
   width: 100%;
   border-collapse: collapse;
@@ -246,18 +230,37 @@
 .tp-table tbody tr:last-child td { border-bottom: none; }
 .tp-table tbody tr:hover          { background: #f8fafc; }
 
-/* Pending rows — subtly dimmed with amber left border */
-.tp-row--pending td:first-child {
-  border-left: 3px solid #fbbf24;
-}
+/* Pending rows */
+.tp-row--pending td:first-child { border-left: 3px solid #fbbf24; }
 .tp-row--pending { background: #fffbeb; }
 .tp-row--pending:hover { background: #fef9c3; }
 
-/* Pending amount label */
+/* Celebrated rows (intended_higher) */
+.tp-row--celebrated {
+  background: linear-gradient(90deg, #fefce8 0%, #fef9c3 100%);
+}
+.tp-row--celebrated td:first-child { border-left: 3px solid #f59e0b; }
+.tp-row--celebrated:hover { background: #fef08a; }
+
+/* Pending amount */
 .tp-amount-pending {
   color: #92400e;
   font-style: italic;
   font-size: 0.85rem;
+}
+
+/* Paid badge */
+.tp-paid-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  margin-left: 0.35rem;
+  vertical-align: middle;
 }
 
 /* Type badges */
@@ -270,10 +273,12 @@
   background: #e2e8f0;
   color: #475569;
 }
-.tp-badge--income  { background: #dcfce7; color: #15803d; }
-.tp-badge--expense { background: #fee2e2; color: #b91c1c; }
-.tp-badge--receipt { background: #dbeafe; color: #1d4ed8; }
-.tp-badge--message { background: #f3e8ff; color: #6b21a8; }
+.tp-badge--income           { background: #dcfce7; color: #15803d; }
+.tp-badge--expense          { background: #fee2e2; color: #b91c1c; }
+.tp-badge--intended         { background: #dbeafe; color: #1d4ed8; }
+.tp-badge--intended_lower   { background: #fef3c7; color: #92400e; }
+.tp-badge--intended_higher  { background: #fef9c3; color: #78350f; border: 1px solid #f59e0b; font-weight: 700; }
+.tp-badge--message          { background: #f3e8ff; color: #6b21a8; }
 
 /* Status pills */
 .tp-status {
