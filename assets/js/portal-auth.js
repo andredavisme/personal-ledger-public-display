@@ -14,7 +14,9 @@
  *   6. User clicks the link → lands on auth/confirm.html which exchanges the token
  *   7. auth/confirm.html redirects to /portal.html → session established
  *   8. We resolve the user's show_role from public.profiles
- *   9. If show_role = 'admin' → show admin notice (portal is not for admins)
+ *   9. If show_role = 'admin' → show admin notice with two options:
+ *        a) Go to Admin Panel
+ *        b) Sign out and sign in as a community rep
  *  10. If show_role = 'community_rep' OR email matches an approved submission → show portal
  *  11. Otherwise → sign out and show access-denied
  *
@@ -146,6 +148,12 @@ const PortalAuth = (() => {
     });
   }
 
+  /**
+   * Shown when an admin navigates to portal.html while logged in.
+   * Two options:
+   *   1. Go to Admin Panel (primary)
+   *   2. Sign out and sign in as a community rep (secondary)
+   */
   function _showAdminNoticeScreen(email) {
     _container.innerHTML = `
       <div class="portal-auth">
@@ -159,10 +167,26 @@ const PortalAuth = (() => {
           <p class="portal-auth__hint">
             To review community financial submissions, use the Admin panel.
           </p>
-          <a href="admin.html" class="portal-auth__btn" style="display:inline-block;text-align:center;text-decoration:none;">Go to Admin Panel</a>
+          <a
+            href="admin.html"
+            class="portal-auth__btn"
+            style="display:block;text-align:center;text-decoration:none;margin-bottom:0.75rem;"
+          >Go to Admin Panel</a>
+          <button
+            id="portal-admin-signout"
+            class="portal-auth__btn portal-auth__btn--secondary"
+            style="width:100%;"
+          >Sign Out &amp; Sign In as Community Rep</button>
         </div>
       </div>
     `;
+
+    document.getElementById('portal-admin-signout')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      _user = null;
+      _submissionId = null;
+      _showRequestScreen('Admin session ended. Enter your community email to sign in.');
+    });
   }
 
   function _showLoadingScreen(label = 'Verifying…') {
@@ -266,7 +290,8 @@ const PortalAuth = (() => {
       if (event === 'SIGNED_OUT') {
         _user = null;
         _submissionId = null;
-        _showRequestScreen();
+        // Only show request screen if container still exists (not navigated away)
+        if (_container) _showRequestScreen();
       }
     });
 
