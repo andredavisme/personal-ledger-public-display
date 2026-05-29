@@ -1,4 +1,10 @@
-# Front-Facing Page Architecture Outline
+# Architecture — Front-Facing Page Outline
+**Last Updated:** May 29, 2026
+**Status:** Current
+
+> **Schema note:** All tables in this project use the `public` schema. Any reference to the `ledger` schema in this document or elsewhere is a legacy artifact from an earlier design iteration and should be disregarded. The correct reference is always `public.<table_name>`.
+
+---
 
 ## Pages
 
@@ -12,7 +18,7 @@
 
 ## Data Flow
 
-1. **User** fills out and submits the intake form → entry written to `ledger` schema with status `pending`; email address captured
+1. **User** fills out and submits the intake form → entry written to `public.submissions` with status `pending`; email address captured
 2. **Administrator** reviews pending entries on the admin page → approves or rejects
 3. **Approval** triggers automatic Community Page generation at a unique route
 4. **Rejection** requires the administrator to:
@@ -27,13 +33,13 @@
 | Section | Purpose |
 |---------|---------|
 | Pending Submissions | Review and action incoming submissions |
-| Rejection Reasons Panel | Checkboxes populated from `correction_reasons` table; at least one required to reject |
+| Rejection Reasons Panel | Checkboxes populated from `public.correction_reasons` table; at least one required to reject |
 | Free-Text Notes | Optional additional context from the administrator |
 | Correction Reasons Manager | Add, edit, or deactivate checklist items — changes reflect immediately in the rejection panel |
 
 ---
 
-## Correction Reasons Table (`ledger.correction_reasons`)
+## Correction Reasons Table (`public.correction_reasons`)
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -51,7 +57,7 @@
 
 | Field | Content |
 |-------|---------|
-| To | User's submitted email address |
+| To | User’s submitted email address |
 | Subject | `Your submission needs a few updates` |
 | Body | Selected correction reasons (label + description) + optional admin notes |
 | CTA | Link back to `/submit` with resubmit invitation |
@@ -61,7 +67,7 @@
 ## Design Constraints
 
 - The intake form must capture **all** data needed for page production — no partial submissions
-- The intake form must capture the User's **email address** for rejection notification
+- The intake form must capture the User’s **email address** for rejection notification
 - Community Pages are **data-driven** — no manual content authoring by administrators
 - The admin page must be **access-controlled** (authentication + role check)
 - **At least one correction reason must be selected** before a rejection can be submitted
@@ -77,3 +83,10 @@
 | `pending` | Submitted, awaiting admin review |
 | `approved` | Verified and published as a Community Page |
 | `rejected` | Reviewed and declined — rejection email sent to User |
+
+---
+
+## Related Files
+- `docs/architecture/correction-reasons.md` — full detail on the correction reasons table and admin capabilities
+- `docs/architecture/intake-form.md` — complete field specification for the intake form
+- `docs/architecture/donation-capture.md` — architecture for donation capture after community page approval
