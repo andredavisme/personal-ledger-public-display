@@ -128,3 +128,68 @@ Security is not a feature you add later. It is a habit you build from the beginn
 **4.** You now have accounts with three different services. Each one holds something valuable — your code, your live application, and your community's data. If you had to rank them by how important it is to protect them, what order would you choose and why?
 
 **5.** The tutorial says to add every new document to the `documentation_catalog` table as soon as you create it. Why do you think doing it immediately matters more than doing it in a batch at the end of a session?
+
+---
+
+## 🏁 Milestone 2 — Confirm Your Infrastructure and Record Your Keys
+
+The three accounts you just created are the foundation everything else is built on. Before moving on, this milestone asks you to verify each one is working and to record the essential identifiers in your project reference document.
+
+If you skip this step and something breaks later, you will spend time hunting for information you could have written down in two minutes right now.
+
+### Steps
+
+**1. Verify your GitHub repository**
+- Go to [github.com](https://github.com) and confirm you are logged in
+- Navigate to your `community-ledger` repository
+- Confirm the repository is set to **Public** and has a README file
+- Copy the full URL of your repository (it looks like `https://github.com/your-username/community-ledger`)
+
+**2. Verify your Cloudflare Pages site**
+- Go to your Cloudflare dashboard → **Workers & Pages**
+- Confirm your `community-ledger` project appears and shows a deployment
+- Click on the project and find your `.pages.dev` URL
+- Open the URL in a new browser tab — you should see your site (even if it only shows a default page for now, that is fine)
+- Copy the full URL
+
+**3. Verify your Supabase project**
+- Go to [supabase.com/dashboard](https://supabase.com/dashboard) and confirm you are logged in
+- Open your `community-ledger` project
+- Go to **Settings → General**
+- Find and copy your **Project ID** (a string of letters and numbers)
+- Find and copy your **Project URL** (looks like `https://xxxx.supabase.co`)
+
+**4. Open `docs/project-reference.md`** in your repository
+- If you do not have this file yet, create it now. You can use the GitHub web editor: go to your repository → **Add file** → **Create new file** → name it `docs/project-reference.md`
+- Fill in the following fields (use the template in the repository or write your own):
+
+```
+## GitHub
+- Repository URL: [paste here]
+- Username: [your GitHub username]
+
+## Cloudflare Pages
+- Live URL: [paste your .pages.dev URL here]
+
+## Supabase
+- Project ID: [paste here]
+- Project URL: [paste here]
+```
+
+**5. Save and commit** `project-reference.md` to your repository with the message:
+`Add project-reference.md with initial account IDs`
+
+> ### 💡 Help Your Future You — This File Is Your North Star
+> The project reference document is the first place you look when you forget something. It is not a backup — it is active infrastructure. Every time you add a new service, a new URL, or a new key to this project, add it here first. Before you close your laptop. Before you move on.
+
+---
+
+## ✅ Milestone Concept Check — Section 2
+
+*Answer these after completing the milestone steps above.*
+
+**1.** You visited your live Cloudflare Pages URL. What did you see? Even if it showed a blank or default page, that is a working site. What does it mean that a file you put in GitHub is now visible on the public internet?
+
+**2.** You copied your Supabase Project ID into a document. It is a string of characters that looks meaningless. Why does it matter? When in this build will you need it?
+
+**3.** You now have a `project-reference.md` file with three sets of account information. Imagine you handed this project to a new volunteer today. Which of the three accounts would be hardest to hand off, and why? What would you need to add to the reference document to make that handoff complete?
