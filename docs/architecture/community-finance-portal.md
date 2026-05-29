@@ -22,13 +22,13 @@ This portal feeds directly into the transparency page and admin verification wor
 
 | Method | Detail |
 |---|---|
-| Primary | **Magic link** sent to the community’s submission email (`public.submissions.contact_email`) |
+| Primary | **Magic link** sent to the community’s submission email (`public.submissions.email`) |
 | Fallback | Gmail OAuth if magic link creates conflicts with existing auth sessions |
 | Session scope | Supabase Auth — same project (`hhyhulqngdkwsxhymmcd`) |
 
 When a community rep clicks their magic link, they are authenticated as a Supabase user and their session is scoped to their community’s `submission_id`.
 
-> The portal must verify that the authenticated user’s email matches a row in `public.submissions` and read the associated `submission_id` for all subsequent queries.
+> The portal must verify that the authenticated user’s email matches a row in `public.submissions.email` and read the associated `submission_id` for all subsequent queries.
 
 ---
 
@@ -124,12 +124,14 @@ message:  pending → approved | rejected  (admin reviews)
 
 | Policy | Detail |
 |---|---|
-| Community rep INSERT | Authenticated user whose email matches a `submissions.contact_email` row may insert rows scoped to that `submission_id` |
+| Community rep INSERT | Authenticated user whose email matches `submissions.email` may insert rows scoped to that `submission_id` |
 | Community rep SELECT | Same scope — rep may only read their own community’s records |
 | Admin ALL | `profiles.show_role IN ('admin', 'community_rep')` — see Note below |
 | Anon SELECT | `status IN ('verified', 'approved')` rows only — feeds transparency page without auth |
 
 > **Note on role values:** The valid `show_role` values in `public.profiles` are `'viewer'`, `'community_rep'`, and `'admin'`. The value `'moderator'` was an early placeholder that was renamed to `'community_rep'` in migration `rename_moderator_to_community_rep_in_rls`. Do not use `'moderator'` in any new policy. See `docs/tutorial/08-debugging-role-naming-drift.md` for the full incident record.
+
+> **Note on email column:** The RLS column for community rep scoping is `public.submissions.email`. The column name `contact_email` does not exist in `public.submissions`. See `docs/project-reference.md` RLS Note for confirmation.
 
 ---
 

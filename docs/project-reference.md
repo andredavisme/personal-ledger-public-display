@@ -1,5 +1,5 @@
 # Community Ledger — Project Reference
-**Last Updated:** May 28, 2026
+**Last Updated:** May 29, 2026
 
 > ⚠️ **Hosting Note:** This project migrated from Netlify to Cloudflare Pages on May 25, 2026 after Netlify's free tier bandwidth limit was reached during development. See `docs/tutorial/06-adjusting-fire.md` for the full reasoning and lesson.
 
@@ -28,7 +28,7 @@
 ## 🗄️ Supabase
 | Label | Value |
 |---|---|
-| Project Name | andredavisme's Project |
+| Project Name | andredavisme’s Project |
 | Project ID | hhyhulqngdkwsxhymmcd |
 | Region | us-west-2 |
 | Database Host | db.hhyhulqngdkwsxhymmcd.supabase.co |
@@ -39,6 +39,7 @@
 | Table | Purpose |
 |---|---|
 | public.submissions | Core intake records. Key auth column: `email` (used in RLS policies) |
+| public.profiles | Auth role store — `show_role` controls admin / community_rep / viewer access |
 | public.submission_financials | Financial statement CSV rows |
 | public.submission_budget | Budget CSV rows |
 | public.submission_donations | Donation method CSV rows |
@@ -49,7 +50,7 @@
 | public.community_financials | Community rep financial submissions — receipts, expenses, messages; feeds transparency page |
 | public.documentation_catalog | Searchable index of all project documentation |
 
-> ⚠️ **RLS Note:** Policies scoping to a community rep's submission use `submissions.email` (not `contact_email` — that column does not exist).
+> ⚠️ **RLS Note:** Policies scoping to a community rep’s submission use `submissions.email` (not `contact_email` — that column does not exist).
 
 ### Key Views
 | View | Purpose |
@@ -88,6 +89,8 @@
 | index.html | Public submission form |
 | admin.html | Admin review page (auth-gated) |
 | community.html | Public community pages |
+| portal.html | Community Finance Portal (magic-link gated) |
+| transparency.html | Public four-stage donation pipeline page |
 | assets/js/intake.js | Form submission → Supabase insert |
 | assets/js/admin.js | Admin page logic |
 | assets/js/admin-test-panel.js | Dev test panel (?dev=true) |
@@ -97,6 +100,9 @@
 | assets/js/admin-wall.js | Admin recognition wall controls |
 | assets/js/admin-donations.js | Admin donation pledges panel |
 | assets/js/admin-digest.js | Admin community digest panel |
+| assets/js/portal.js | Community Finance Portal logic |
+| assets/js/transparency.js | Transparency page data loader and renderer |
+| assets/css/portal.css | Community Finance Portal styles |
 
 ---
 
@@ -128,7 +134,7 @@ WHERE status = 'needs_update';
 
 ---
 
-## 📌 Open Items (as of May 28, 2026)
+## 📌 Open Items (as of May 29, 2026)
 - [x] Create Cloudflare Pages account and connect GitHub repo
 - [x] Update live URLs in this document after Cloudflare deploy
 - [x] Migrate auth from Netlify Identity → Supabase Auth
@@ -138,10 +144,10 @@ WHERE status = 'needs_update';
 - [x] Create documentation_catalog table and seed all docs
 - [x] Build recognition wall admin panel
 - [x] Run `create_community_financials_table` migration
+- [x] Write and commit `docs/architecture/transparency-page.md`
+- [x] Write and commit `docs/architecture/community-finance-portal.md`
+- [x] Add both new architecture docs to `documentation_catalog` in Supabase
 - [ ] Move Supabase anon key to Cloudflare Pages environment variables (deferred — publishable key, not a security risk)
-- [ ] Write and commit `docs/architecture/transparency-page.md`
-- [ ] Write and commit `docs/architecture/community-finance-portal.md`
-- [ ] Add both new architecture docs to `documentation_catalog` in Supabase
 - [ ] Build Community Finance Portal (magic-link gated, rep form → `community_financials`)
 - [ ] Build Admin Finance Verification panel
 - [ ] Build `transparency.html` — public four-stage pipeline page
