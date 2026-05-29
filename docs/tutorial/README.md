@@ -30,47 +30,62 @@ This is not a toy or an exercise. It is a real application, and the one you buil
 
 ## How This Tutorial Is Structured
 
-Each section is divided into two parts.
+Each section has three parts.
 
-**Part 1 — Theory**
-Before you build anything, you will read a plain-language explanation of the concept behind what you are about to do. This section introduces the ideas, the vocabulary, and the *why* — so that when you follow the steps, you understand what each one is actually doing. You do not need to memorize it. You just need to read it with curiosity.
+**Part 1 — Concept**
+A plain-language explanation of the idea behind what you are about to do. It introduces vocabulary and *why* before *how*. Read it once with curiosity, not to memorize it.
 
-**Part 2 — Milestone**
-After the theory, you will be given a set of numbered steps to complete. Each step is specific and verifiable — you will know when you have done it correctly because something visible will have changed. At the end of the milestone, a short **Concept Check** gives you questions tied directly to what you just did. These are not graded. There is no answer key. They are an invitation to put what you just experienced into your own words — which is how understanding actually forms.
+**Part 2 — Concept Check**
+A set of open-ended questions at the end of the theory. There is no answer key. Write your responses in your own words. The research on learning is clear: people who explain things in their own words retain them. People who skip this step often discover later that they only recognized the material — they did not understand it. Recognition and understanding feel the same in the moment. They are not the same.
 
-> Skipping the Concept Check is like copying someone else's notes instead of taking your own. The understanding lives in the thinking, not the reading.
+**Part 3 — Milestone**
+Numbered steps to complete. Each step is specific and verifiable — you will know when you have done it correctly because something visible will have changed. Most milestones ask you to record your work in a file called `my-notes.md` in your repository. This file is yours — no one reads it but you. It is a thinking document, not a submission.
+
+At the end of every milestone there is a **Milestone Concept Check** — three questions tied directly to what you just did, not to the theory. These questions are worth your time. Skip them at the cost of your own understanding.
+
+> **One file you will use throughout:** `my-notes.md`. Create it in Milestone 0 and add to it in every section that follows. Keep it in your GitHub repository. It is the running record of your own thinking — a habit that will serve you long after this tutorial ends.
 
 ---
 
 ## Tutorial Sections
 
-| # | File | Topic |
-|---|------|-------|
-| 0 | [00-what-this-does.md](00-what-this-does.md) | Plain-language overview — the collect → store → show flow, the three money buckets, and how the public page works |
-| 1 | [01-introduction.md](01-introduction.md) | What we are building, why it matters, and what AI is (and is not) in this process |
-| 2 | [02-your-tools.md](02-your-tools.md) | Setting up GitHub, Cloudflare Pages, and Supabase — the three services your application lives in |
-| 2b | [02b-cors-and-browser-security.md](02b-cors-and-browser-security.md) | CORS and browser security — why your browser blocks certain requests and how to handle it |
-| 3 | [03-thinking-with-ai.md](03-thinking-with-ai.md) | How to communicate precisely with an AI assistant and why sequencing decisions matter |
-| 4 | [04-your-first-file.md](04-your-first-file.md) | Creating your first HTML file, understanding what a web page actually is, and going live |
-| 5 | [05-admin-and-notifications.md](05-admin-and-notifications.md) | Protecting your admin page with Supabase Auth and sending automated rejection emails |
-| 6 | [06-adjusting-fire.md](06-adjusting-fire.md) | A case study in changing course mid-build — and the habits that make it painless |
-| 7 | [07-documentation-as-infrastructure.md](07-documentation-as-infrastructure.md) | Building a living, queryable documentation catalog in the database — from the very first session |
-| 8 | [08-debugging-role-naming-drift.md](08-debugging-role-naming-drift.md) | How a naming inconsistency silently blocked a feature — and the diagnostic method that found it |
+| # | File | Topic | Milestone |
+|---|------|-------|----------|
+| 0 | [00-what-this-does.md](00-what-this-does.md) | Plain-language overview — collect → store → show, the three money buckets, how the public page works | Create `my-notes.md`; write the flow in your own words |
+| 1 | [01-introduction.md](01-introduction.md) | What we are building, why it matters, and what AI is and is not | Write your community into existence in `my-notes.md` |
+| 2 | [02-your-tools.md](02-your-tools.md) | Setting up GitHub, Cloudflare Pages, and Supabase | Verify all 3 accounts, record keys in `project-reference.md` |
+| 2b | [02b-cors-and-browser-security.md](02b-cors-and-browser-security.md) | CORS and browser security — why the browser blocks certain requests and how to handle it | Document your origins and CORS template in `my-notes.md` |
+| 3 | [03-thinking-with-ai.md](03-thinking-with-ai.md) | Communicating precisely with AI; why sequencing matters | Write one vague and one precise instruction for your project |
+| 4 | [04-your-first-file.md](04-your-first-file.md) | Creating your first HTML file and going live | Type `index.html` by hand, upload, verify live at `.pages.dev` |
+| 5 | [05-admin-and-notifications.md](05-admin-and-notifications.md) | Protecting the admin page with Supabase Auth; sending rejection emails | Create admin user, set redirect URL, verify login wall |
+| 6 | [06-adjusting-fire.md](06-adjusting-fire.md) | Changing course mid-build — the case study and the habit | Write your constraints and a failure-response plan |
+| 7 | [07-documentation-as-infrastructure.md](07-documentation-as-infrastructure.md) | Building a living, queryable documentation catalog from the first session | Create the table, seed two records, verify with SELECT |
+| 8 | [08-debugging-role-naming-drift.md](08-debugging-role-naming-drift.md) | How a naming inconsistency silently blocked a feature — and the diagnostic method | Decide your role names and write the CHECK constraint before any policy |
+
+---
+
+## A Note on `my-notes.md`
+
+Every milestone in this tutorial asks you to write something in `my-notes.md`. This file lives in your GitHub repository and belongs entirely to you.
+
+It is not a homework submission. It is not graded. It is a running record of your own thinking — written in your own words, in real time, as you work through the build.
+
+The purpose is not to document the tutorial. The tutorial is already documented. The purpose is to document *your version of the project* — your community, your constraints, your decisions, your questions, your surprises. That record will be more useful to you than any tutorial section when something breaks at 10pm and you need to remember why you made a decision three weeks ago.
 
 ---
 
 ## A Note on the Documentation Catalog
 
-One of the first things you will set up — alongside your GitHub repository and Supabase project — is a `documentation_catalog` table in your database. This is covered in Section 7, but you should read it early.
+One of the most important things you will set up is a `documentation_catalog` table in your Supabase database (Section 7). Every document you create — including each tutorial section as you read it — gets a record in that table. Every architecture decision, every session handoff, every reference doc — all indexed, all queryable.
 
-Every document you create gets a record in that table. Every architecture decision, every tutorial section, every session handoff — all indexed, all searchable. When you come back to this project after a break, you will not have to hunt through folders. You will run a query.
+The catalog insert is the last step every time you create a new file. Not after a session ends. Not this weekend. When you create the file.
 
-This is not a nice-to-have. It is infrastructure.
+This is infrastructure, not bookkeeping.
 
 ---
 
 ## A Note on Pacing
 
-Go as slowly as you need to. Every section is written to be read once, tried once, and then read again if something did not work. Nothing in here requires you to memorize anything. Everything you need is written down.
+Go as slowly as you need to. Every section is written to be read once, tried once, and then read again if something did not work. Nothing here requires memorization. Everything you need is written down.
 
 If a step produces an error, that is not a failure — it is information. The sections on debugging (especially Section 8) will help you build the habit of reading errors as clues, not verdicts.
