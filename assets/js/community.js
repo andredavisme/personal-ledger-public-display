@@ -18,10 +18,10 @@ let intentFormEl    = null;
 let intentConfirmEl = null;
 let activeSubmissionId = null;
 let activeMethod       = null;
-let activePaymentData  = null;  // { type, handle, submissionId } — resolved to URL at confirm time
+let activePaymentData  = null;
 let communityLookup = new Map();
 
-const SUPABASE_URL = 'https://hhyhulqngdkwsxhymmcd.supabase.co';
+const SUPABASE_URL      = 'https://hhyhulqngdkwsxhymmcd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_haKvwV0M7KMj4Qz69M6WGg_KmIfU-aI';
 
 initIntentModal();
@@ -30,7 +30,7 @@ initIntentModal();
 async function loadCommunities() {
   const { data: submissions, error } = await supabase
     .from('submissions')
-    .select('id, community_name, location, mission, values, local_vision, universal_vision, donation_transparency, application_transparency, reviewed_at')
+    .select('id, community_name, location, mission, values, local_vision, universal_vision, donation_transparency, application_transparency, reviewed_at, budget_amounts_visible')
     .eq('status', 'approved')
     .order('reviewed_at', { ascending: false });
 
@@ -50,7 +50,7 @@ async function loadCommunities() {
   await Promise.all(submissions.map(async s => {
     const [{ data: financials }, { data: budget }, { data: donations }] = await Promise.all([
       supabase.from('submission_financials').select('*').eq('submission_id', s.id).order('sort_order'),
-      supabase.from('submission_budget').select('*').eq('submission_id', s.id).order('sort_order'),
+      supabase.from('submission_budget').select('id, item, estimated_cost, actual_cost, status, sort_order').eq('submission_id', s.id).order('sort_order'),
       supabase.from('submission_donations').select('*').eq('submission_id', s.id).order('sort_order'),
     ]);
     s.financials = financials || [];
@@ -59,8 +59,101 @@ async function loadCommunities() {
     communityLookup.set(s.id, s);
   }));
 
-  submissions.forEach(s => listEl.appendChild(buildCard(s)));
+  submissions.forEach((s, idx) => {
+    // Progress divider between communities (not before the first)
+    if (idx > 0) {
+      listEl.appendChild(buildProgressDivider(submissions[idx - 1]));
+    }
+    listEl.appendChild(buildCard(s));
+  });
+
+  // Add final divider after last community if there are multiple
+  if (submissions.length > 1) {
+    listEl.appendChild(buildProgressDivider(submissions[submissions.length - 1]));
+  }
+
   bindIntentButtons();
+}
+
+// ─── Progress Divider ─────────────────────────────────────────────────────────────────
+function buildProgressDivider(s) {
+  const divider = document.createElement('div');
+  divider.className = 'community-progress-divider';
+  divider.setAttribute('aria-label', `Budget progress for ${s.community_name}`);
+
+  if (!s.budget || s.budget.length === 0) {
+    divider.innerHTML = `<div class="cpd__inner cpd__inner--empty"><span class="cpd__name">${esc(s.community_name)}</span><span class="cpd__no-budget">No budget items on file</span></div>`;
+    return divider;
+  }
+
+  const showAmounts  = s.budget_amounts_visible ?? false;
+  const totalGoal    = s.budget.reduce((sum, b) => sum + Number(b.estimated_cost ?? 0), 0);
+  const totalAlloc   = s.budget.reduce((sum, b) => sum + Number(b.actual_cost    ?? 0), 0);
+  const overallPct   = totalGoal > 0 ? Math.min(100, Math.round((totalAlloc / totalGoal) * 100)) : 0;
+
+  const TIER_ORDER  = ['expected', 'desired', 'contingency'];
+  const TIER_COLOR  = { expected: '#3b82f6', desired: '#22c55e', contingency: '#f59e0b' };
+  const TIER_LABELS = { expected: 'Expected', desired: 'Desired', contingency: 'Contingency' };
+
+  const tiersHtml = TIER_ORDER.map(tier => {
+    const items = s.budget.filter(b => b.status === tier);
+    if (!items.length) return '';
+    const tierGoal  = items.reduce((sum, b) => sum + Number(b.estimated_cost ?? 0), 0);
+    const tierAlloc = items.reduce((sum, b) => sum + Number(b.actual_cost    ?? 0), 0);
+    const tierPct   = tierGoal > 0 ? Math.min(100, Math.round((tierAlloc / tierGoal) * 100)) : 0;
+    const color     = TIER_COLOR[tier];
+
+    const itemsHtml = items.map(b => {
+      const goal  = Number(b.estimated_cost ?? 0);
+      const alloc = Number(b.actual_cost    ?? 0);
+      const pct   = goal > 0 ? Math.min(100, Math.round((alloc / goal) * 100)) : 0;
+      const label = showAmounts
+        ? `$${_fmt(alloc)} / $${_fmt(goal)}`
+        : `${pct}%`;
+      return `
+        <div class="cpd__item">
+          <div class="cpd__item-header">
+            <span class="cpd__item-label">${esc(b.item)}</span>
+            <span class="cpd__item-pct">${esc(label)}</span>
+          </div>
+          <div class="cpd__item-track">
+            <div class="cpd__item-fill" style="width:${pct}%;background:${color}"></div>
+          </div>
+        </div>`;
+    }).join('');
+
+    const tierLabel = showAmounts
+      ? `$${_fmt(tierAlloc)} / $${_fmt(tierGoal)}`
+      : `${tierPct}%`;
+
+    return `
+      <div class="cpd__tier">
+        <div class="cpd__tier-header">
+          <span class="cpd__tier-label" style="color:${color}">${TIER_LABELS[tier]}</span>
+          <span class="cpd__tier-pct">${esc(tierLabel)}</span>
+        </div>
+        ${itemsHtml}
+      </div>`;
+  }).join('');
+
+  const overallLabel = showAmounts
+    ? `$${_fmt(totalAlloc)} of $${_fmt(totalGoal)} allocated`
+    : `${overallPct}% of goal allocated`;
+
+  divider.innerHTML = `
+    <div class="cpd__inner">
+      <div class="cpd__header">
+        <span class="cpd__name">${esc(s.community_name)}</span>
+        <span class="cpd__overall-pct">${esc(overallLabel)}</span>
+      </div>
+      <div class="cpd__overall-track">
+        <div class="cpd__overall-fill" style="width:${overallPct}%"></div>
+      </div>
+      <div class="cpd__tiers">${tiersHtml}</div>
+      <p class="cpd__donate-nudge">Every donation moves this bar. <button type="button" class="cpd__donate-link js-cpd-donate" data-submission-id="${esc(s.id)}">Donate to ${esc(s.community_name)} →</button></p>
+    </div>`;
+
+  return divider;
 }
 
 // ─── Card Builder ─────────────────────────────────────────────────────────────────
@@ -88,7 +181,7 @@ function buildCard(s) {
     </section>
 
     ${s.financials.length ? `<section class="community-card__section"><h4>Financial History</h4><p class="section-desc">Past income and expenses submitted by this community.</p>${buildTable(s.financials, ['name'])}</section>` : ''}
-    ${s.budget.length ? `<section class="community-card__section"><h4>Budget Needs</h4><p class="section-desc">Items this community needs to purchase, expects to purchase, or is planning for.</p>${buildTable(s.budget, ['item'])}</section>` : ''}
+    ${s.budget.length ? `<section class="community-card__section"><h4>Budget Needs</h4><p class="section-desc">Items this community needs to purchase, expects to purchase, or is planning for.</p>${buildBudgetTable(s)}</section>` : ''}
 
     <section class="community-card__section">
       <h4>Transparency</h4>
@@ -104,8 +197,32 @@ function buildCard(s) {
   return article;
 }
 
+// ─── Budget Table (with allocation progress) ──────────────────────────────────────────
+function buildBudgetTable(s) {
+  const showAmounts = s.budget_amounts_visible ?? false;
+  const rows = s.budget.map(b => {
+    const goal  = Number(b.estimated_cost ?? 0);
+    const alloc = Number(b.actual_cost    ?? 0);
+    const pct   = goal > 0 ? Math.min(100, Math.round((alloc / goal) * 100)) : 0;
+    const label = showAmounts ? `$${_fmt(alloc)} / $${_fmt(goal)}` : `${pct}%`;
+    return `
+      <tr>
+        <td>${esc(b.item)}</td>
+        <td>${esc(b.status)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div style="flex:1;background:#e5e7eb;border-radius:4px;height:8px;min-width:80px;">
+              <div style="width:${pct}%;background:#3b82f6;border-radius:4px;height:8px;"></div>
+            </div>
+            <span style="font-size:0.8rem;white-space:nowrap;">${esc(label)}</span>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+  return `<div class="csv-table-wrap"><table class="csv-table"><thead><tr><th>Item</th><th>Status</th><th>Allocated</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
 // ─── Table Renderer ─────────────────────────────────────────────────────────────────
-// allowedCols: optional array of column names to include. If omitted, all non-system cols are shown.
 function buildTable(rows, allowedCols) {
   const skip    = ['id', 'submission_id', 'sort_order'];
   let headers   = Object.keys(rows[0]).filter(h => !skip.includes(h));
@@ -118,9 +235,6 @@ function buildTable(rows, allowedCols) {
 }
 
 // ─── Donation List Renderer ─────────────────────────────────────────────────────────────────
-// Each card shows ONE button: "I Intend to Donate".
-// Payment data is stored as JSON on the button and resolved to a URL at confirm time
-// so the amount entered in the intent form can be pre-filled in the PayPal link.
 function buildDonationList(submissionId, rows) {
   const cols = Object.keys(rows[0]).filter(h => !['id', 'submission_id', 'sort_order'].includes(h));
 
@@ -142,11 +256,8 @@ function buildDonationList(submissionId, rows) {
     const pairs      = cols.map(c => ({ key: c, label: c.replace(/_/g, ' '), value: row[c] })).filter(p => p.value);
     const otherPairs = pairs.filter(p => !['link', 'url', 'handle_or_address'].some(k => p.key.toLowerCase().includes(k)));
     const methodLabel = getMethodLabel(row, pairs);
+    const handleVal  = row['handle_or_address'] || row['handle'] || row['address'] || row['email'] || '';
 
-    // Resolve the handle/email field for PayPal/Stripe
-    const handleVal = row['handle_or_address'] || row['handle'] || row['address'] || row['email'] || '';
-
-    // Payment data stored as JSON — amount injected at confirm time
     let paymentData = null;
     if (type === 'paypal') {
       paymentData = JSON.stringify({ type: 'paypal', handle: handleVal });
@@ -177,10 +288,9 @@ function buildDonationList(submissionId, rows) {
   }).join('')}</div>`;
 }
 
-// ─── Build payment button HTML at confirm time (so amount is available) ──────────────────
+// ─── Build payment button HTML at confirm time ──────────────────────────────────────
 function buildPaymentButtonHtml(paymentData, amount) {
   if (!paymentData) return '';
-
   let data;
   try { data = JSON.parse(paymentData); } catch { return ''; }
 
@@ -189,25 +299,20 @@ function buildPaymentButtonHtml(paymentData, amount) {
     if (amount && amount > 0) params.set('amount', amount.toFixed(2));
     return `<a href="https://www.paypal.com/donate?${params}" target="_blank" rel="noopener noreferrer" class="btn btn--paypal">Donate via PayPal</a>`;
   }
-
   if (data.type === 'stripe' && data.href) {
     return `<a href="${esc(data.href)}" target="_blank" rel="noopener noreferrer" class="btn btn--stripe">Donate via Stripe</a>`;
   }
-
   if (data.type === 'postal') {
     const params = new URLSearchParams({ submission_id: data.submissionId, method: 'postal' });
     return `<a href="donate-instructions.html?${params}" class="btn btn--instructions">How to Mail a Donation</a>`;
   }
-
   if (data.type === 'crypto') {
     const params = new URLSearchParams({ submission_id: data.submissionId, method: 'crypto' });
     return `<a href="donate-instructions.html?${params}" class="btn btn--instructions">How to Send Crypto</a>`;
   }
-
   if (data.type === 'other' && data.href) {
     return `<a href="${esc(data.href)}" target="_blank" rel="noopener noreferrer" class="btn btn--primary">Donate</a>`;
   }
-
   return '';
 }
 
@@ -220,43 +325,21 @@ function initIntentModal() {
       <div class="donation-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="intent-modal-title">
         <button type="button" class="donation-modal__close" aria-label="Close" data-close-intent-modal>&times;</button>
         <div class="donation-modal__content">
-
-          <!-- Step 1: Form -->
           <div id="intent-form-view">
             <h3 id="intent-modal-title">I Intend to Donate</h3>
             <p class="section-desc" id="intent-modal-community"></p>
             <p class="donation-note" style="margin-bottom:1rem;">Logging your intent does not complete a donation. It helps this community understand how much support is on the way. You can donate right after logging your intent.</p>
             <div id="intent-error" class="donation-message donation-message--error" hidden></div>
             <form id="intent-form" class="donation-form">
-              <label>
-                <span>Display Name (optional — shown on recognition wall)</span>
-                <input type="text" name="donor_name" maxlength="120" />
-              </label>
-              <label>
-                <span>Email (optional — for receipt and updates)</span>
-                <input type="email" name="donor_email" maxlength="160" />
-              </label>
-              <label>
-                <span>Intended Amount (USD) <span class="donation-form__hint">Suggested minimum: $15.00</span></span>
-                <input type="number" name="amount" min="0.01" step="0.01" required />
-              </label>
-              <label>
-                <span>Message to Community (optional)</span>
-                <textarea name="wall_message" rows="3" maxlength="500"></textarea>
-              </label>
-              <label class="donation-form__checkbox">
-                <input type="checkbox" name="display_on_wall" />
-                <span>Show my name and message on the recognition wall</span>
-              </label>
-              <label class="donation-form__checkbox">
-                <input type="checkbox" name="amount_visible_on_wall" />
-                <span>Show my donation amount on the recognition wall</span>
-              </label>
+              <label><span>Display Name (optional — shown on recognition wall)</span><input type="text" name="donor_name" maxlength="120" /></label>
+              <label><span>Email (optional — for receipt and updates)</span><input type="email" name="donor_email" maxlength="160" /></label>
+              <label><span>Intended Amount (USD) <span class="donation-form__hint">Suggested minimum: $15.00</span></span><input type="number" name="amount" min="0.01" step="0.01" required /></label>
+              <label><span>Message to Community (optional)</span><textarea name="wall_message" rows="3" maxlength="500"></textarea></label>
+              <label class="donation-form__checkbox"><input type="checkbox" name="display_on_wall" /><span>Show my name and message on the recognition wall</span></label>
+              <label class="donation-form__checkbox"><input type="checkbox" name="amount_visible_on_wall" /><span>Show my donation amount on the recognition wall</span></label>
               <button type="submit" class="btn btn--primary">Log My Intent</button>
             </form>
           </div>
-
-          <!-- Step 2: Confirmation + payment button -->
           <div id="intent-confirm-view" class="donation-confirm" hidden>
             <div class="donation-confirm__icon" aria-hidden="true">&#10003;</div>
             <h3 class="donation-confirm__title">Intent Logged!</h3>
@@ -264,11 +347,9 @@ function initIntentModal() {
             <div id="intent-confirm-payment" class="donation-confirm__payment"></div>
             <p class="donation-confirm__closing">You can donate now or close this window and donate when you&rsquo;re ready.</p>
           </div>
-
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 
   document.body.appendChild(wrapper.firstElementChild);
 
@@ -282,7 +363,6 @@ function initIntentModal() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && intentModalEl && !intentModalEl.hidden) closeIntentModal();
   });
-
   intentFormEl.addEventListener('submit', handleIntentSubmit);
   intentFormEl.donor_name.addEventListener('input', () => {
     intentFormEl.display_on_wall.checked = Boolean(intentFormEl.donor_name.value.trim());
@@ -290,12 +370,27 @@ function initIntentModal() {
 }
 
 function bindIntentButtons() {
+  // Intent buttons from donation methods
   document.querySelectorAll('.js-intent').forEach(btn => {
     btn.addEventListener('click', () => openIntentModal(
       btn.dataset.submissionId,
       btn.dataset.method,
       btn.dataset.payment
     ));
+  });
+  // Donate nudge links inside progress dividers
+  document.querySelectorAll('.js-cpd-donate').forEach(btn => {
+    const submissionId = btn.dataset.submissionId;
+    const community    = communityLookup.get(submissionId);
+    if (!community || !community.donations?.length) {
+      btn.style.display = 'none';
+      return;
+    }
+    // Scroll to and highlight that community's donate section
+    btn.addEventListener('click', () => {
+      const card = document.getElementById(`community-${submissionId}`);
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   });
 }
 
@@ -304,13 +399,13 @@ function openIntentModal(submissionId, method, paymentEncoded) {
   activeMethod       = method || '';
   activePaymentData  = paymentEncoded ? decodeURIComponent(paymentEncoded) : null;
 
-  const community = communityLookup.get(submissionId);
+  const community      = communityLookup.get(submissionId);
   const communityLabel = community ? community.community_name : 'this community';
 
   intentFormEl.reset();
-  intentFormEl.display_on_wall.checked = false;
+  intentFormEl.display_on_wall.checked       = false;
   intentFormEl.amount_visible_on_wall.checked = false;
-  document.getElementById('intent-error').hidden = true;
+  document.getElementById('intent-error').hidden     = true;
   document.getElementById('intent-form-view').hidden = false;
   intentConfirmEl.hidden = true;
   document.getElementById('intent-modal-community').textContent = `Logging intent to donate to ${communityLabel}.`;
@@ -334,7 +429,7 @@ async function handleIntentSubmit(event) {
 
   const submitBtn = intentFormEl.querySelector('button[type="submit"]');
   const errorEl   = document.getElementById('intent-error');
-  submitBtn.disabled = true;
+  submitBtn.disabled    = true;
   submitBtn.textContent = 'Logging...';
   errorEl.hidden = true;
 
@@ -362,32 +457,17 @@ async function handleIntentSubmit(event) {
 
     if (error) throw error;
 
-    // ── Call send-donation-receipt Edge Function ────────────────────────────────────────────
-    // Non-blocking: receipt/wall insert failure does not prevent the
-    // confirmation screen from showing. Errors are logged to console only.
     if (inserted?.id) {
-      fetch(
-        `${SUPABASE_URL}/functions/v1/send-donation-receipt`,
-        {
-          method:  'POST',
-          headers: {
-            'Content-Type':  'application/json',
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({ donation_id: inserted.id }),
-        }
-      ).then(async res => {
+      fetch(`${SUPABASE_URL}/functions/v1/send-donation-receipt`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({ donation_id: inserted.id }),
+      }).then(async res => {
         const json = await res.json().catch(() => ({}));
-        if (!res.ok || json.ok === false) {
-          console.warn('[community] send-donation-receipt non-OK response:', json);
-        }
-      }).catch(err => {
-        console.error('[community] send-donation-receipt fetch error:', err);
-      });
+        if (!res.ok || json.ok === false) console.warn('[community] send-donation-receipt non-OK:', json);
+      }).catch(err => console.error('[community] send-donation-receipt fetch error:', err));
     }
-    // ─────────────────────────────────────────────────────────────────────────────
 
-    // Build payment button now that we have the amount
     const paymentEl = document.getElementById('intent-confirm-payment');
     paymentEl.innerHTML = buildPaymentButtonHtml(activePaymentData, amount);
 
@@ -403,7 +483,7 @@ async function handleIntentSubmit(event) {
     errorEl.textContent = err?.message || 'Unable to log intent right now. Please try again.';
     errorEl.hidden = false;
   } finally {
-    submitBtn.disabled = false;
+    submitBtn.disabled    = false;
     submitBtn.textContent = 'Log My Intent';
   }
 }
@@ -416,6 +496,10 @@ function getMethodLabel(row, pairs) {
   }
   const firstNonLink = pairs.find(p => !(p.label.toLowerCase().includes('link') || p.label.toLowerCase().includes('url')));
   return firstNonLink ? String(firstNonLink.value) : 'Donation';
+}
+
+function _fmt(n) {
+  return Number(n ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function esc(str) {

@@ -10,6 +10,7 @@
  *   4. File upload to Supabase Storage (community-docs bucket)
  *   5. Insert record into public.community_financials
  *   6. Load and display the rep's submission history
+ *   7. Budget Allocation panel (portal-budget.js)
  *
  * TABLE COLUMNS (community_financials):
  *   id, submission_id, donation_id (nullable), type, status,
@@ -24,8 +25,9 @@
 
 import supabase    from './supabase.js';
 import PortalAuth  from './portal-auth.js';
+import * as Budget from './portal-budget.js';
 
-// ─── Tab config ─────────────────────────────────────────────────────────
+// ─── Tab config ─────────────────────────────────────────────────────────────
 
 const TABS = [
   { key: 'intended', label: '🎯 Log Intended'  },
@@ -33,7 +35,7 @@ const TABS = [
   { key: 'message',  label: '✏️ Add Message'  },
 ];
 
-// ─── State ──────────────────────────────────────────────────────────────
+// ─── State ──────────────────────────────────────────────────────────────────
 
 let _activeTab      = 'intended';
 let _submissionId   = null;
@@ -41,7 +43,7 @@ let _user           = null;
 let _communityName  = '';
 let _root           = null;
 
-// ─── Bootstrap ──────────────────────────────────────────────────────────
+// ─── Bootstrap ──────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
   _root = document.getElementById('portal-root');
@@ -62,7 +64,7 @@ async function _onAuthenticated(user, submissionId) {
   _renderPortal();
 }
 
-// ─── Portal shell ─────────────────────────────────────────────────────────
+// ─── Portal shell ─────────────────────────────────────────────────────────────
 
 function _renderPortal() {
   _root.innerHTML = `
@@ -95,6 +97,15 @@ function _renderPortal() {
         <div id="portal-form-area"></div>
       </div>
 
+      <div class="portal__section portal__section--budget">
+        <h2 class="portal__section-title">📊 Budget Allocation</h2>
+        <p class="portal__section-desc">
+          Adjust how your received income is applied to each budget item from your submission.
+          Drag the sliders to allocate funds — the available pool updates live. Save when ready.
+        </p>
+        <div id="portal-budget-panel"></div>
+      </div>
+
       <div class="portal__section">
         <h2 class="portal__section-title">Your Submissions</h2>
         <p class="portal__section-desc">All financial records you have submitted for admin review.</p>
@@ -112,9 +123,16 @@ function _renderPortal() {
 
   _renderForm(_activeTab);
   _loadHistory();
+
+  // Init budget panel
+  Budget.init(
+    document.getElementById('portal-budget-panel'),
+    _submissionId,
+    _user.id
+  );
 }
 
-// ─── Tab switching ──────────────────────────────────────────────────────────
+// ─── Tab switching ──────────────────────────────────────────────────────────────
 
 function _setTab(key) {
   _activeTab = key;
@@ -126,7 +144,7 @@ function _setTab(key) {
   _renderForm(key);
 }
 
-// ─── Form renderer ─────────────────────────────────────────────────────────
+// ─── Form renderer ─────────────────────────────────────────────────────────────
 
 function _renderForm(tab) {
   const area = document.getElementById('portal-form-area');
@@ -140,10 +158,6 @@ function _renderForm(tab) {
   });
 }
 
-/**
- * Intended form
- * "A donor has indicated they intend to give this amount."
- */
 function _intendedFormHtml() {
   return `
     <form class="portal__form" id="portal-record-form" novalidate>
@@ -174,10 +188,6 @@ function _intendedFormHtml() {
   `;
 }
 
-/**
- * Expense form
- * "We spent received funds on this."
- */
 function _expenseFormHtml() {
   return `
     <form class="portal__form" id="portal-record-form" novalidate>
@@ -208,9 +218,6 @@ function _expenseFormHtml() {
   `;
 }
 
-/**
- * Message form
- */
 function _messageFormHtml() {
   return `
     <form class="portal__form" id="portal-record-form" novalidate>
@@ -230,7 +237,7 @@ function _messageFormHtml() {
   `;
 }
 
-// ─── Form submission handler ─────────────────────────────────────────────────
+// ─── Form submission handler ─────────────────────────────────────────────────────
 
 async function _handleSubmit(tab, form) {
   const feedbackEl    = document.getElementById('portal-form-feedback');
@@ -276,7 +283,7 @@ async function _handleSubmit(tab, form) {
       .from('community_financials')
       .insert({
         submission_id: _submissionId,
-        type:          tab,       // intended | expense | message
+        type:          tab,
         status:        'pending',
         amount,
         currency:      'USD',
@@ -301,7 +308,7 @@ async function _handleSubmit(tab, form) {
   }
 }
 
-// ─── History loader ─────────────────────────────────────────────────────────
+// ─── History loader ─────────────────────────────────────────────────────────────
 
 async function _loadHistory() {
   const el = document.getElementById('portal-history');
@@ -327,12 +334,12 @@ async function _loadHistory() {
 }
 
 const TYPE_LABEL = {
-  intended:         'Intended',
-  intended_lower:   'Lowered Intention',
-  intended_higher:  'Increased Intention',
-  income:           'Income',
-  expense:          'Expense',
-  message:          'Message',
+  intended:        'Intended',
+  intended_lower:  'Lowered Intention',
+  intended_higher: 'Increased Intention',
+  income:          'Income',
+  expense:         'Expense',
+  message:         'Message',
 };
 
 function _buildHistoryItem(row) {
@@ -362,11 +369,11 @@ function _buildHistoryItem(row) {
   `;
 }
 
-// ─── Feedback helpers ────────────────────────────────────────────────────────
+// ─── Feedback helpers ────────────────────────────────────────────────────────────
 
 function _setFeedback(el, type, message) {
   if (!el) return;
-  el.className  = type === 'success' ? 'portal__form-success' : 'portal__form-error';
+  el.className   = type === 'success' ? 'portal__form-success' : 'portal__form-error';
   el.textContent = message;
   el.removeAttribute('hidden');
 }
