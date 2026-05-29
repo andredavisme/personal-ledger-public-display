@@ -1,26 +1,34 @@
 # Personal Ledger — Public Display
+**Last Updated:** May 29, 2026
 
-Public-facing community financial ledger — transparent income, expenses, budget, and donation tracking.
+A public-facing community financial ledger — transparent income, expenses, budget, and donation tracking. Communities submit their financial information, donors contribute and are recognized publicly, and every dollar is traced from intent to applied impact.
+
+---
+
+## Live
+- **Public site:** https://personal-ledger-public-display.pages.dev
+- **Admin panel:** https://personal-ledger-public-display.pages.dev/admin.html
+- **Full project reference:** `docs/project-reference.md`
 
 ---
 
 ## Application Architecture
 
-This application is built around three front-facing surfaces:
+This application is built around five surfaces:
 
 ---
 
 ### 1. Intake Page (`/submit`)
-Accepts information submissions from the public User.
+Accepts information submissions from the public.
 
 **Purpose:** Collect all data required to produce a Community Page upon approval.
 
 **Responsibilities:**
-- Present a structured intake form to the User
-- Collect all fields necessary to generate a complete Community Page (no follow-up data collection needed)
-- Collect the User's **email address** for notification purposes
-- Submit the entry to the database with a `pending` status
-- Confirm receipt to the User upon submission
+- Present a structured intake form
+- Collect identity, community objectives, financial statements, budget, and donation methods via CSV upload
+- Collect the submitter’s **email address** for notification
+- Submit the entry to `public.submissions` with status `pending`
+- Confirm receipt on submission
 
 **Key Principle:** A submission must be self-contained — every field needed to produce a published Community Page is captured at intake.
 
@@ -32,16 +40,13 @@ Internal page for reviewing and actioning pending submissions.
 **Purpose:** Allow an authorized administrator to verify submitted information and approve or reject it for publication.
 
 **Responsibilities:**
-- Display all submissions in `pending` status
-- Allow the administrator to review full submission details
-- Approve a submission → triggers Community Page creation
-- Reject a submission → archives the entry and triggers a rejection email to the User
-- When rejecting, the administrator:
-  - Selects applicable **correction reasons** from a managed checklist
-  - May add a free-text note for additional context
-  - Must select at least one checkbox before rejection can be submitted
-- Includes a **Correction Reasons Manager** section to add, edit, or deactivate checklist items
-- Access is restricted to authorized administrators only
+- Display all `pending` submissions
+- Approve → triggers Community Page creation and assigns a `community_rep` role to the contact email
+- Reject → selects correction reasons from managed checklist + optional notes → sends rejection email to submitter
+- Includes **Correction Reasons Manager** to add, edit, or deactivate checklist items
+- Includes **Donations panel** — view self-reported donations per community, recognition wall controls
+- Includes **Finance Verification panel** — review and approve/reject community receipt and expense submissions
+- Access restricted to users with `profiles.show_role = 'admin'`
 
 **Key Principle:** Approval is the sole trigger for Community Page production. Rejection is the sole trigger for a rejection notification email.
 
@@ -50,56 +55,133 @@ Internal page for reviewing and actioning pending submissions.
 ### 3. Community Page (`/community/:id`)
 A dedicated public page generated per approved submission.
 
-**Purpose:** Display the verified, approved information from a single submission as a formatted public-facing page.
+**Purpose:** Display verified, approved information from a single submission as a formatted public-facing page.
 
 **Responsibilities:**
-- Render all data fields from the approved submission
-- Each approved submission produces exactly one unique Community Page
-- Pages are publicly accessible and individually addressable by ID or slug
-- Content is drawn entirely from the submission — no manual page authoring required
+- Render all approved submission data (identity, objectives, financials, budget, donation methods)
+- Display **Recognition Wall** — donors who consented to public display
+- Display **Donation Intent button** — opens self-report donation form for visitors
+- Each approved submission produces exactly one unique, publicly addressable Community Page
 
 **Key Principle:** The Community Page is a direct output of an approved submission — data in equals page out.
 
 ---
 
-## Rejection Email
+### 4. Community Finance Portal (`/portal`)
+Magic-link-gated hub for community representatives.
 
-When an administrator rejects a submission, an automated email is sent to the User's submitted email address.
+**Purpose:** Give community reps an ongoing interface to document their financial activity after approval.
 
-**Email must include:**
-- The selected correction reasons (from the managed checklist)
-- Any additional free-text notes from the administrator
-- Why each item matters to the submission and community page
-- An invitation to resubmit with the corrected information
+**Responsibilities:**
+- Confirm receipt of donations (links to `public.donations` records)
+- Submit expense records documenting how funds were applied
+- Post messages to supporters
+- All submissions feed `public.community_financials` and surface on the Transparency Page after admin review
+- Access scoped to authenticated rep’s `submission_id` via `profiles.show_role = 'community_rep'`
 
-**Purpose:** Ensure the User understands exactly what is needed, reducing incomplete resubmissions and maintaining submission quality.
+**Key Principle:** The portal is not a one-time form — it is the community’s ongoing accountability interface.
 
 ---
 
-## Page Flow
+### 5. Transparency Page (`/transparency`)
+Fully public, no-auth pipeline view across all communities.
+
+**Purpose:** Answer the question every donor has: *“Where does the money actually go?”*
+
+**Responsibilities:**
+- Display a four-stage pipeline: **Request → Intention → Received → Applied**
+- Aggregate totals across all communities (global section)
+- Allow side-by-side comparison of up to 3 communities (comparison section)
+- All data drawn from `public.submissions`, `public.donations`, and `public.community_financials`
+- No authentication required — anon read only
+
+**Key Principle:** Every stage of the donation lifecycle is visible to anyone, without login.
+
+---
+
+## Full Platform Flow
 
 ```
 User → Intake Page (/submit)
-         ↓ [submission stored as pending, email captured]
-Administrator → Admin Page (/admin)
+         ↓ [submission stored as pending]
+Admin → Admin Page (/admin)
          ↓ [approve or reject]
-         ↓ [if reject: select correction reasons (checkboxes) + optional notes]
-Approved → Community Page (/community/:id) [published]
-Rejected → Archived + Rejection Email → User
-             (selected reasons + notes + resubmit invite)
+         ↓ [reject: correction reasons + notes → rejection email to submitter]
+         ↓ [approve: community_rep role assigned, magic link sent]
 
-Administrator → Admin Page → Correction Reasons Manager
-         ↓ [add / edit / deactivate checklist items]
+Approved → Community Page (/community/:id) [published]
+         ↓ [visitor clicks “I Intend to Donate”]
+Donor → Donation Form (modal)
+         ↓ [self-reported donation → public.donations]
+         ↓ [if email provided: receipt sent via send-donation-receipt Edge Function]
+         → Recognition Wall (if donor consented)
+
+Community Rep → Portal (/portal) [magic link]
+         ↓ [submit receipt confirmation or expense record → public.community_financials]
+Admin → Finance Verification Panel
+         ↓ [approve/verify → status promoted]
+
+Transparency Page (/transparency) [public]
+         ← reads submissions + donations + community_financials
+         ← displays 4-stage pipeline per community
 ```
 
 ---
 
 ## Repository Structure
 
-> _To be expanded as development progresses._
+```
+personal-ledger-public-display/
+├── index.html                  # Intake form (/submit)
+├── admin.html                  # Admin panel (/admin)
+├── community.html              # Community page (/community/:id)
+├── portal.html                 # Community Finance Portal (/portal)
+├── transparency.html           # Transparency pipeline page (/transparency)
+├── _redirects                  # Cloudflare Pages routing rules
+├── assets/
+│   ├── js/
+│   │   ├── supabase.js             # Shared Supabase client
+│   │   ├── auth.js                 # Auth abstraction layer (Supabase Auth)
+│   │   ├── intake.js               # Intake form → Supabase insert
+│   │   ├── admin.js                # Admin page logic
+│   │   ├── admin-donations.js      # Admin donation pledges panel
+│   │   ├── admin-wall.js           # Admin recognition wall controls
+│   │   ├── admin-digest.js         # Admin community digest panel
+│   │   ├── admin-test-panel.js     # Dev test panel (?dev=true)
+│   │   ├── community.js            # Community page renderer
+│   │   ├── portal.js               # Community Finance Portal logic
+│   │   └── transparency.js         # Transparency page data loader and renderer
+│   └── css/
+│       ├── portal.css              # Community Finance Portal styles
+│       └── [other stylesheets]
+├── supabase/
+│   └── functions/
+│       ├── send-rejection-email/   # Rejection notification Edge Function
+│       └── send-donation-receipt/  # Donor receipt Edge Function
+└── docs/
+    ├── project-reference.md       # Live URLs, Supabase IDs, key tables, open items
+    ├── session-handoff.md         # Session-to-session continuity log
+    ├── architecture/              # Feature-level architecture specs
+    ├── infrastructure/            # Auth, deployment, email infrastructure docs
+    └── tutorial/                  # Developer learning path (00–08)
+```
+
+---
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Hosting | Cloudflare Pages (free tier) |
+| Database | Supabase (PostgreSQL) — project `hhyhulqngdkwsxhymmcd`, schema `public` |
+| Auth | Supabase Auth — admin: email+password; community rep: magic link |
+| Edge Functions | Supabase Edge Functions (Deno) |
+| Email | Gmail SMTP via `denomailer` (Deno library) |
+| Frontend | Vanilla HTML / CSS / JavaScript — no framework, no build step |
 
 ---
 
 ## Related
-- Private repo: `personal-ledger-private` (sensitive docs, credentials, vault references)
-- Supabase schema: `ledger`
+- **Private repo:** `personal-ledger-private` (sensitive docs, credentials, vault references)
+- **Full project reference:** `docs/project-reference.md`
+- **Session continuity:** `docs/session-handoff.md`
