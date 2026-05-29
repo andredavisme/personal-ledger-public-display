@@ -26,6 +26,63 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 29, 2026 — Session 20
+**Status at close:** `community_financials` type vocabulary fully refactored; variance records, paid tracking, and Recognition Wall celebration logic fully implemented and tested clean.
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Renamed `receipt` type → `income` | Existing DB record (`type = 'returned'`, which was the only receipt record) updated; `receipt` removed from constraint vocabulary |
+| Added 4 new type values | `income`, `intended`, `intended_lower`, `intended_higher` added to `community_financials_type_check` constraint |
+| Added paid tracking columns | `paid boolean NOT NULL DEFAULT false`, `paid_amount numeric`, `paid_at timestamptz` added to `community_financials` |
+| Portal tab renamed Receipt → Intended | `portal.js` fully rewritten — tab key `intended`, form labels, submit button, history type labels all updated; `TYPE_LABEL` map covers all 6 types |
+| Admin "Mark Paid" flow built | `admin-finance.js` — new button appears on `approved + intended` rows; modal with live variance hint (updates as you type actual amount); on confirm: marks original record paid, auto-inserts `intended_lower` or `intended_higher` variance record at `status = approved` |
+| Wall celebration for `intended_higher` | When variance type is `intended_higher`, most recent `recognition_wall` entry for that submission is set to `sort_order = 0` + `featured = true`; 🎉 toast shown to admin |
+| `wall.js` updated | Communities with a celebrated entry sort to top of wall; celebrated entries render with `.wall-entry--celebrated` class and "🎉 Exceeded Intention" badge |
+| `transparency.js` updated | `returned` records excluded from all queries; `INTENDED_FAMILY` filter covers `intended`, `intended_lower`, `intended_higher` together; `intended_higher` rows render with gold `.tp-row--celebrated` highlight; paid badge shows variance if amount differs |
+| `transparency.css` updated | New badges: `tp-badge--income`, `tp-badge--intended`, `tp-badge--intended_lower`, `tp-badge--intended_higher`; `tp-paid-badge`; `tp-row--celebrated` gold row; admin `finance-paid-badge` |
+| DB migration applied | `update_community_financials_type_and_paid_tracking` — drop constraint, rename receipt→income, add new constraint, add paid columns |
+| Test seed + cleanup | 3 test communities seeded (Community A: $1→$0.50, B: $2→$2, C: $3→$4) — all pipeline stages verified clean — seeds deleted |
+| Afferent Signal test data purged | All records deleted from `community_financials`, `recognition_wall`, `donations`, `submissions` for Afferent Signal community |
+
+#### 🟡 Decisions Made This Session
+| Decision | Choice |
+|---|---|
+| Variance type vocabulary | `intended_lower` = paid less than intended; `intended_higher` = paid more than intended |
+| Variance record status | Auto-inserted at `status = approved` — no admin review step needed for variance records |
+| Wall celebration trigger | Admin action only (Mark Paid modal) — not automatic; admin confirms actual paid amount, system handles the rest |
+| `intended` filter on transparency page | Covers all three intended family types (`intended`, `intended_lower`, `intended_higher`) as a group |
+| `returned` records | Excluded entirely from all transparency page aggregations, charts, and display |
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Verify `transparency.html` live** — confirm all 4 charts render, filter chips work, intended family filters correctly, celebrated rows display gold
+- [ ] **Verify `wall.html` live** — confirm celebrated entries surface at top with 🎉 badge
+- [ ] **Verify admin "Mark Paid" flow live** — submit an intended record, approve it, mark paid with variance, confirm variance record and wall update
+- [ ] **Audit `Auth.isAdmin()` callers in `admin.js`** — confirm all use `await` (isAdmin is async since Session 19)
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| `Auth.isAdmin()` is async | Any calling code using it synchronously needs `await` — audit `admin.js` |
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+1. **Live verify** `transparency.html` — filters, charts, celebrated row styling
+2. **Live verify** `wall.html` — celebrated entry at top with badge
+3. **Live verify** admin Mark Paid flow end-to-end with a real record
+4. **Audit `admin.js`** for synchronous `isAdmin()` calls
+
+#### 📚 Commits & Migrations This Session
+| Reference | What Changed |
+|---|---|
+| Migration `update_community_financials_type_and_paid_tracking` | Dropped old type constraint; renamed `receipt`→`income`; added `intended`, `intended_lower`, `intended_higher`; added `paid`, `paid_amount`, `paid_at` columns |
+| Commit `f4d0f35` | `portal.js`, `admin-finance.js`, `transparency.js`, `wall.js`, `transparency.css` — full type refactor, variance logic, wall celebration |
+| DB (manual SQL) | Test seeds inserted and deleted; Afferent Signal records purged from all tables |
+| This commit | `docs/session-handoff.md` Session 20 closeout |
+
+---
+
 ### 🕒 May 29, 2026 — Session 19
 **Status at close:** Role system overhauled; portal access fully working for `andre.davis.me@gmail.com`; admin finance Return to Submitter flow working end-to-end. Ready to begin `transparency.html` work.
 
