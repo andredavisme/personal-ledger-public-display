@@ -11,20 +11,22 @@
  * This module abstracts all authentication calls behind a single interface
  * so that switching auth providers in the future requires changes only
  * in this file, not throughout the application.
+ *
+ * ROLE MODEL:
+ *   is_admin (boolean) — controls admin panel access. Set independently.
+ *   show_role (text)   — portal-facing role: 'viewer', 'community_rep', 'admin' (legacy).
+ *   A user can hold both is_admin = true AND show_role = 'community_rep'.
  */
 
 import supabase from './supabase.js';
 
 const Auth = (() => {
 
-  // ─── State ──────────────────────────────────────────────────────────────────
+  // ─── State ─────────────────────────────────────────────────────────────────
   let _currentUser = null;
   let _onChangeCallbacks = [];
 
-  // ─── Login Modal ──────────────────────────────────────────────────────────
-  // Supabase Auth does not ship a pre-built login widget the way
-  // Netlify Identity did. We build a minimal email/password modal
-  // here so the admin page has a self-contained login experience.
+  // ─── Login Modal ───────────────────────────────────────────────────────
 
   function _buildModal() {
     if (document.getElementById('auth-modal')) return;
@@ -55,17 +57,8 @@ const Auth = (() => {
     `;
 
     document.body.appendChild(modal);
-
-    // Close on backdrop click
-    modal.addEventListener('click', e => {
-      if (e.target === modal) _closeModal();
-    });
-
-    // Submit on Enter
-    modal.addEventListener('keydown', e => {
-      if (e.key === 'Enter') _submitLogin();
-    });
-
+    modal.addEventListener('click', e => { if (e.target === modal) _closeModal(); });
+    modal.addEventListener('keydown', e => { if (e.key === 'Enter') _submitLogin(); });
     document.getElementById('auth-submit').addEventListener('click', _submitLogin);
   }
 
@@ -75,9 +68,9 @@ const Auth = (() => {
   }
 
   async function _submitLogin() {
-    const email    = document.getElementById('auth-email')?.value?.trim();
-    const password = document.getElementById('auth-password')?.value;
-    const errorEl  = document.getElementById('auth-error');
+    const email     = document.getElementById('auth-email')?.value?.trim();
+    const password  = document.getElementById('auth-password')?.value;
+    const errorEl   = document.getElementById('auth-error');
     const submitBtn = document.getElementById('auth-submit');
 
     if (!email || !password) {
@@ -105,16 +98,13 @@ const Auth = (() => {
     _closeModal();
   }
 
-  // ─── Public API ───────────────────────────────────────────────────────────
+  // ─── Public API ──────────────────────────────────────────────────────────
 
   function initAuth() {
-    // Listen for session changes (page load, token refresh, sign out)
     supabase.auth.onAuthStateChange((event, session) => {
       _currentUser = session?.user || null;
       _onChangeCallbacks.forEach(cb => cb(_currentUser));
     });
-
-    // Check for an existing session immediately on load
     supabase.auth.getSession().then(({ data: { session } }) => {
       _currentUser = session?.user || null;
       _onChangeCallbacks.forEach(cb => cb(_currentUser));
@@ -123,7 +113,6 @@ const Auth = (() => {
 
   function login() {
     _buildModal();
-    // Focus email field after modal renders
     setTimeout(() => document.getElementById('auth-email')?.focus(), 50);
   }
 
@@ -137,12 +126,20 @@ const Auth = (() => {
     return _currentUser;
   }
 
-  function isAdmin() {
-    // Any authenticated Supabase user is an admin.
-    // Access is controlled at the Supabase Auth level (invite-only or
-    // restricted sign-up). Role-based granularity can be added later
-    // via public.user_roles or JWT custom claims if needed.
-    return !!_currentUser;
+  /**
+   * Checks profiles.is_admin for the current user.
+   * Returns a Promise<boolean>. Use `await Auth.isAdmin()` in calling code.
+   * Falls back to false if no profile row exists.
+   */
+  async function isAdmin() {
+    if (!_currentUser) return false;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', _currentUser.id)
+      .maybeSingle();
+    if (error || !data) return false;
+    return data.is_admin === true;
   }
 
   function onChange(callback) {

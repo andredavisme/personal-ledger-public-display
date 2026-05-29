@@ -13,17 +13,17 @@
  *   5. Supabase emails a magic link to that address
  *   6. User clicks the link → lands on auth/confirm.html which exchanges the token
  *   7. auth/confirm.html redirects to /portal.html → session established
- *   8. We resolve the user's show_role from public.profiles
- *   9. If show_role = 'admin' → show admin notice with two options:
+ *   8. We resolve the user's profile (is_admin, show_role) from public.profiles
+ *   9. If is_admin = true → show admin notice with two options:
  *        a) Go to Admin Panel
  *        b) Sign out and sign in as a community rep
  *  10. If show_role = 'community_rep' OR email matches an approved submission → show portal
  *  11. Otherwise → sign out and show access-denied
  *
- * ADMIN DETECTION:
- *   Previously used app_metadata.providers heuristic (unreliable — magic links
- *   also register an 'email' provider entry). Now resolved via profiles.show_role
- *   directly from the database — the authoritative source of role truth.
+ * ROLE MODEL:
+ *   is_admin (boolean) — controls admin panel access. Independent of show_role.
+ *   show_role (text)   — controls portal-facing role: 'viewer', 'community_rep'.
+ *   A user can be both is_admin = true AND show_role = 'community_rep'.
  */
 
 import supabase from './supabase.js';
@@ -36,21 +36,24 @@ const PortalAuth = (() => {
   let _onAuthenticatedCallback = null;
   let _container = null;
 
-  // ─── Role resolution ─────────────────────────────────────────────────────
+  // ─── Profile resolution ──────────────────────────────────────────────────
 
   /**
-   * Fetches the authenticated user's show_role from public.profiles.
-   * Returns 'viewer' as the safe default if no profile row exists.
+   * Fetches is_admin and show_role from public.profiles for the current user.
+   * Returns safe defaults if no profile row exists.
    */
-  async function _getShowRole() {
+  async function _getProfile() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { is_admin: false, show_role: 'viewer' };
+
     const { data, error } = await supabase
       .from('profiles')
-      .select('show_role')
-      .eq('id', (await supabase.auth.getUser()).data.user?.id)
+      .select('is_admin, show_role')
+      .eq('id', user.id)
       .maybeSingle();
 
-    if (error || !data) return 'viewer';
-    return data.show_role;
+    if (error || !data) return { is_admin: false, show_role: 'viewer' };
+    return data;
   }
 
   // ─── Screen builders ─────────────────────────────────────────────────────
@@ -89,12 +92,8 @@ const PortalAuth = (() => {
 
     const input = document.getElementById('portal-email');
     const btn   = document.getElementById('portal-auth-submit');
-
-    input?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') _handleOtpRequest();
-    });
+    input?.addEventListener('keydown', e => { if (e.key === 'Enter') _handleOtpRequest(); });
     btn?.addEventListener('click', _handleOtpRequest);
-
     setTimeout(() => input?.focus(), 50);
   }
 
@@ -117,10 +116,7 @@ const PortalAuth = (() => {
         </div>
       </div>
     `;
-
-    document.getElementById('portal-resend')?.addEventListener('click', () => {
-      _showRequestScreen();
-    });
+    document.getElementById('portal-resend')?.addEventListener('click', () => _showRequestScreen());
   }
 
   function _showAccessDeniedScreen(email) {
@@ -142,18 +138,11 @@ const PortalAuth = (() => {
         </div>
       </div>
     `;
-
     document.getElementById('portal-try-again')?.addEventListener('click', () => {
       supabase.auth.signOut().then(() => _showRequestScreen());
     });
   }
 
-  /**
-   * Shown when an admin navigates to portal.html while logged in.
-   * Two options:
-   *   1. Go to Admin Panel (primary)
-   *   2. Sign out and sign in as a community rep (secondary)
-   */
   function _showAdminNoticeScreen(email) {
     _container.innerHTML = `
       <div class="portal-auth">
@@ -180,7 +169,6 @@ const PortalAuth = (() => {
         </div>
       </div>
     `;
-
     document.getElementById('portal-admin-signout')?.addEventListener('click', async () => {
       await supabase.auth.signOut();
       _user = null;
@@ -207,15 +195,8 @@ const PortalAuth = (() => {
     const errorEl = document.getElementById('portal-auth-error');
     const btn     = document.getElementById('portal-auth-submit');
 
-    if (!email) {
-      _showError(errorEl, 'Please enter your email address.');
-      return;
-    }
-
-    if (!_isValidEmail(email)) {
-      _showError(errorEl, 'Please enter a valid email address.');
-      return;
-    }
+    if (!email) { _showError(errorEl, 'Please enter your email address.'); return; }
+    if (!_isValidEmail(email)) { _showError(errorEl, 'Please enter a valid email address.'); return; }
 
     btn.textContent = 'Sending…';
     btn.disabled = true;
@@ -238,36 +219,40 @@ const PortalAuth = (() => {
   async function _verifySubmissionAccess(user) {
     _showLoadingScreen('Verifying your access…');
 
-    // ── Role-based routing (authoritative — reads profiles.show_role) ──────
-    const role = await _getShowRole();
+    const profile = await _getProfile();
 
-    if (role === 'admin') {
+    // Admins who are NOT also community reps see the admin notice
+    if (profile.is_admin && profile.show_role !== 'community_rep') {
       _showAdminNoticeScreen(user.email);
       return;
     }
 
-    // ── Community rep: verify approved submission exists for this email ────
-    const { data, error } = await supabase
-      .from('submissions')
-      .select('id')
-      .eq('email', user.email)
-      .eq('status', 'approved')
-      .maybeSingle();
+    // community_rep role OR approved submission → grant portal access
+    if (profile.show_role === 'community_rep') {
+      // Still confirm a matching approved submission exists
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('id')
+        .eq('email', user.email)
+        .eq('status', 'approved')
+        .maybeSingle();
 
-    if (error || !data) {
-      await supabase.auth.signOut();
-      _showAccessDeniedScreen(user.email);
+      if (error || !data) {
+        await supabase.auth.signOut();
+        _showAccessDeniedScreen(user.email);
+        return;
+      }
+
+      _user         = user;
+      _submissionId = data.id;
+      _container.innerHTML = '';
+      if (typeof _onAuthenticatedCallback === 'function') _onAuthenticatedCallback(_user, _submissionId);
       return;
     }
 
-    _user         = user;
-    _submissionId = data.id;
-
-    _container.innerHTML = '';
-
-    if (typeof _onAuthenticatedCallback === 'function') {
-      _onAuthenticatedCallback(_user, _submissionId);
-    }
+    // No matching role or submission
+    await supabase.auth.signOut();
+    _showAccessDeniedScreen(user.email);
   }
 
   // ─── Public API ──────────────────────────────────────────────────────────
@@ -276,27 +261,20 @@ const PortalAuth = (() => {
     _container = document.getElementById(containerId);
     _onAuthenticatedCallback = onAuthenticated;
 
-    if (!_container) {
-      console.error('[PortalAuth] Container not found:', containerId);
-      return;
-    }
+    if (!_container) { console.error('[PortalAuth] Container not found:', containerId); return; }
 
     _showLoadingScreen('Loading…');
 
     supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user && !_user) {
-        _verifySubmissionAccess(session.user);
-      }
+      if (event === 'SIGNED_IN' && session?.user && !_user) _verifySubmissionAccess(session.user);
       if (event === 'SIGNED_OUT') {
         _user = null;
         _submissionId = null;
-        // Only show request screen if container still exists (not navigated away)
         if (_container) _showRequestScreen();
       }
     });
 
     const { data: { session } } = await supabase.auth.getSession();
-
     if (session?.user) {
       await _verifySubmissionAccess(session.user);
     } else {
@@ -314,18 +292,12 @@ const PortalAuth = (() => {
   function getUser()         { return _user; }
   function getSubmissionId() { return _submissionId; }
 
-  // ─── Utilities ────────────────────────────────────────────────────────────
-
-  function _isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
+  function _isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 
   function _escHtml(str) {
     return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   function _showError(el, message) {
