@@ -27,7 +27,7 @@ Here is how it works:
 
 You manage the approved list in your Supabase dashboard under **Authentication → Users**. You create users directly — no public registration is available on this application.
 
-> ### 💡 Help Your Future You — Invite, Don't Share
+> ### 💡 Help Your Future You — Invite, Don’t Share
 > Never share your admin password with a co-admin. Instead, create them their own user in Supabase Auth so they have their own login. This means if they ever need to be removed, you can delete their account without changing your own password or affecting anyone else. Each person should have exactly one account, and each account should belong to exactly one person.
 
 ---
@@ -36,7 +36,7 @@ You manage the approved list in your Supabase dashboard under **Authentication �
 
 ### Step 1 — Configure Your Redirect URLs
 
-Before creating any users, set Supabase's URL configuration so that auth emails (password resets, confirmations) point to the right place.
+Before creating any users, set Supabase’s URL configuration so that auth emails (password resets, confirmations) point to the right place.
 
 1. Go to your Supabase dashboard → **Authentication** → **URL Configuration**
 2. Set **Site URL** to your Cloudflare Pages URL:
@@ -49,7 +49,7 @@ Before creating any users, set Supabase's URL configuration so that auth emails 
    ```
 4. Click **Save**
 
-> **If your Supabase project is shared with another application**, add that application's URL to the Redirect URLs list as well. Do not remove it.
+> **If your Supabase project is shared with another application**, add that application’s URL to the Redirect URLs list as well. Do not remove it.
 
 ### Step 2 — Create Your Admin User
 
@@ -60,7 +60,7 @@ Before creating any users, set Supabase's URL configuration so that auth emails 
 
 ---
 
-## Troubleshooting: When the Dashboard Doesn't Cooperate
+## Troubleshooting: When the Dashboard Doesn’t Cooperate
 
 ### The SQL Password Reset
 
@@ -96,8 +96,8 @@ Emails are sent from your Gmail account via **Gmail SMTP** using a Google App Pa
 
 Resend was the original email provider. It was abandoned after discovering that Resend blocks free public email domains (gmail.com, yahoo.com, etc.) as sending addresses — a hard blocker since this project does not use a custom domain.
 
-Resend's error when attempting to add gmail.com:
-> *"We don't allow free public domains. Please use a domain you own instead."*
+Resend’s error when attempting to add gmail.com:
+> *“We don’t allow free public domains. Please use a domain you own instead.”*
 
 This is enforced policy, not a configuration issue. See `docs/infrastructure/email.md` for the full option comparison.
 
@@ -140,7 +140,7 @@ Use this any time you change email configuration before a real rejection goes ou
 
 *Write your responses in your own words.*
 
-**1.** The admin page shows a login button to anyone who is not authenticated, and nothing else. Why is it important that the page shows *nothing else* — not even a message that says "access denied"?
+**1.** The admin page shows a login button to anyone who is not authenticated, and nothing else. Why is it important that the page shows *nothing else* — not even a message that says “access denied”?
 
 **2.** Rejection emails are sent automatically when an admin clicks a button. What would be the consequence of not having this automation — if an admin had to write and send each rejection manually?
 
@@ -153,3 +153,86 @@ Use this any time you change email configuration before a real rejection goes ou
 **6.** Resend blocks free public email domains. In your own words, explain *why* an email service would enforce this restriction — what problem are they preventing?
 
 **7.** Gmail SMTP was chosen over Resend because it requires no custom domain. What trade-offs does that introduce, and under what circumstances would switching to a custom domain + Resend be worth it?
+
+---
+
+## 🏁 Milestone 5 — Create Your Admin User and Confirm the Login Wall
+
+The concept of authentication — checking who someone is before letting them in — is easy to understand in theory. This milestone makes it tangible. You will create a real admin user in Supabase, configure where auth emails go, and verify that your admin page actually requires a login.
+
+### Steps
+
+**1. Set your Redirect URL in Supabase**
+- Go to your [Supabase dashboard](https://supabase.com/dashboard)
+- Open your `community-ledger` project
+- Navigate to **Authentication → URL Configuration**
+- In the **Site URL** field, enter your Cloudflare Pages URL:
+  ```
+  https://your-site.pages.dev
+  ```
+  (Replace `your-site` with your actual project name)
+- Under **Redirect URLs**, click **Add URL** and enter:
+  ```
+  https://your-site.pages.dev/**
+  ```
+- Click **Save**
+
+> If you see an existing URL in the Site URL field from a previous setup, update it rather than adding a second one.
+
+**2. Create your admin user**
+- Go to **Authentication → Users**
+- Click **Add user** → **Create new user**
+- Enter the email address you want to use for admin access
+- Choose a strong password and write it down in a secure location (a password manager, not a sticky note)
+- Click **Create user**
+- You should see the user appear in the Users list with a Confirmed status
+
+**3. Verify the login wall is working**
+- Open your application’s `admin.html` page in a browser (use your `.pages.dev` URL followed by `/admin.html`)
+- You should see **only** a login prompt — no data, no controls, nothing else
+- Enter the email and password you just created
+- You should now see the admin interface
+
+> If you see the admin interface without logging in, the auth layer is not wired correctly. Do not proceed — note the issue in `my-notes.md` and review Section 5 before moving on.
+
+**4. Log out and verify the wall reappears**
+- Find the logout button or link in the admin interface
+- Click it
+- Confirm you are back to the login prompt with nothing visible behind it
+
+**5. Record the milestone in `my-notes.md`**
+- Open `my-notes.md` and add:
+
+```
+## Section 5 — Admin and Notifications
+
+### Admin user email
+[Write the email address you used — not the password.]
+
+### Redirect URL I configured
+[Paste the URL you set as Site URL in Supabase.]
+
+### What I saw before logging in
+[Describe what the admin page looked like before authentication.]
+
+### What I saw after logging in
+[Describe what the admin interface showed.]
+
+### One thing that surprised me or needed troubleshooting
+[Write one sentence. If everything went perfectly, write why you think it did.]
+```
+
+> ### 💡 Help Your Future You — Test the Wall, Not Just the Door
+> It is easy to test that logging in works. It is equally important to test that *not* logging in keeps you out. The second check — verifying the wall holds after logout — is the one developers skip. Make it a habit: any time you change auth configuration, test the locked state, not just the unlocked one.
+
+---
+
+## ✅ Milestone Concept Check — Section 5
+
+*Answer these after completing the milestone steps above.*
+
+**1.** You set a Redirect URL in Supabase before creating any users. Why does Supabase need to know where to send auth emails before a user exists? What would happen if you skipped that step and created the user first?
+
+**2.** You verified that the admin page shows only a login prompt to unauthenticated visitors. What is the difference between a page that *hides* its content and a page that *does not load* its content unless you are authenticated? Why does that distinction matter for security?
+
+**3.** You logged out and confirmed the login wall reappeared. This is a test step that many people skip. What habit does this reinforce, and where else in this build — or in your own life — does the habit of testing the *locked* state matter as much as testing the *unlocked* one?
