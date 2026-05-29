@@ -26,6 +26,52 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 29, 2026 — Session 18
+**Status at close:** OTP 500 error root cause identified — database trigger type mismatch on `auth.users`; fix not yet applied
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Diagnosed OTP 500 error | Auth logs confirmed exact error: `column "role" is of type mod_role but expression is of type text (SQLSTATE 42804)` — a database trigger on `auth.users` is casting `role` to `text` instead of `mod_role` when Supabase tries to insert a new user record |
+| Ruled out redirect_to as root cause | The 500 is not caused by `emailRedirectTo` — it fires even without that parameter; the failure is at the DB write layer |
+
+#### 🟡 Decisions Made This Session
+| Decision | Choice |
+|---|---|
+| Next diagnostic step | Run trigger audit SQL (see Resume step 1 below) — identify which trigger on `auth.users` has the bad `role` cast |
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Fix OTP trigger type mismatch** — run trigger audit, identify the bad trigger, fix the cast from `text` to `mod_role`
+- [ ] **Submit first real community record** — use the intake form at `index.html`; go through the full admin approval workflow
+- [ ] **Verify all public-facing pages** with real approved data — Community Page, Transparency, Recognition Wall, Portal
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| OTP 500 — `role` type mismatch on `auth.users` trigger | **Active blocker** — `admin@afferentsignal.com` cannot authenticate via magic link until fixed |
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+1. **Run trigger audit in Supabase SQL editor:**
+   ```sql
+   SELECT trigger_name, event_manipulation, event_object_table, action_statement
+   FROM information_schema.triggers
+   WHERE event_object_schema = 'auth'
+   ORDER BY trigger_name;
+   ```
+2. **Identify the trigger** casting `role` as `text` instead of `mod_role`
+3. **Fix the trigger** — update cast to `::mod_role` or drop if it was created in error
+4. **Re-test OTP** — attempt magic link login with `admin@afferentsignal.com` on `portal.html`
+5. **If OTP resolves** — proceed with first real community submission and approval walkthrough
+
+#### 📚 Commits This Session
+| Reference | What Changed |
+|---|---|
+| This commit | `docs/session-handoff.md` Session 18 closeout |
+
+---
+
 ### 🕒 May 28, 2026 — Session 17
 **Status at close:** Admin nav gate live and verified; portal admin bypass working; all nav flows confirmed end-to-end
 
