@@ -19,8 +19,8 @@ const adminUI   = document.getElementById('admin-ui');
 const loginBtn  = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 
-Auth.onChange(user => {
-  if (Auth.isAdmin()) {
+Auth.onChange(async user => {
+  if (await Auth.isAdmin()) {
     authGate.style.display = 'none';
     adminUI.style.display  = 'block';
     loadAll();
@@ -455,7 +455,7 @@ function escHtml(str) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/\"/g, '&quot;');
 }
 
 function formatDate(iso) {
