@@ -83,7 +83,7 @@ Now that you have a working HTML file, let's put it in your repository.
 4. At the bottom, write a short description: `Add index.html — first page`
 5. Click **Commit changes**
 
-Your file is now in GitHub. In the next section, we will connect GitHub to Netlify so this file becomes a live web page.
+Your file is now in GitHub. In the next section, Cloudflare Pages will detect the change and automatically publish the latest version of your site. Once it finishes deploying — usually within a minute — your page will be live at your `.pages.dev` URL.
 
 > ### 💡 Help Your Future You — Test Before You Push
 > Before uploading any file to GitHub, open it in a browser first. A broken page that is only on your computer is easy to fix quietly. A broken page that is live on the internet — even one that only three people have visited — is a broken page your community could see. Make "open it locally first" a habit from day one.
