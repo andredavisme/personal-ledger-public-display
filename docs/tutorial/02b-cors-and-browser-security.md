@@ -28,7 +28,7 @@ Without CORS, any webpage you visit could silently make requests to your bank, y
 
 The rule is simple: **a server must explicitly declare which origins it trusts.** If it does not, the browser blocks the response — even if the server received the request and responded successfully.
 
-> ⚠️ This is the most important thing to understand: **the server may return a 200 OK and the browser will still block the response** if the CORS headers are missing or wrong. From the browser's perspective, the call failed. From the server's perspective, everything worked fine.
+> ⚠️ This is the most important thing to understand: **the server may return a 200 OK and the browser will still block the response** if the CORS headers are missing or wrong. From the browser’s perspective, the call failed. From the server’s perspective, everything worked fine.
 
 ---
 
@@ -38,7 +38,7 @@ For certain types of requests — including any `POST` with a `Content-Type: app
 
 Instead, it sends a **preflight request**: an `OPTIONS` request to the same URL, asking:
 
-> "I am a page at origin X. Am I allowed to make a POST request with these headers to your server?"
+> “I am a page at origin X. Am I allowed to make a POST request with these headers to your server?”
 
 The server must respond to that `OPTIONS` request with the correct CORS headers. If it does not, the browser cancels the real request entirely — without ever sending it.
 
@@ -163,7 +163,7 @@ No 'Access-Control-Allow-Origin' header is present on the requested resource.
 ```
 
 ### In the Edge Function logs
-**Nothing.** The function body never executed. The preflight was rejected before the real request fired. This is why CORS failures are easy to confuse with "the function isn't being called" — because from the function's perspective, it wasn't.
+**Nothing.** The function body never executed. The preflight was rejected before the real request fired. This is why CORS failures are easy to confuse with “the function isn’t being called” — because from the function’s perspective, it wasn’t.
 
 ### In the network tab
 You will see the `OPTIONS` preflight request with a `4xx` or a response missing the CORS headers, followed by the real `POST` never appearing.
@@ -215,3 +215,92 @@ CORS is **purely a browser enforcement mechanism**. If you call your Edge Functi
 - Local development requires localhost origins to be explicitly allowed
 - Use a dynamic origin-reflection pattern to support multiple environments cleanly
 - Never use `*` with `Authorization` headers
+
+---
+
+## ✅ Concept Check — Section 02b
+
+*Write your responses in your own words.*
+
+**1.** In your own words, explain what an “origin” is. Why does the browser care whether two origins match?
+
+**2.** A developer tests their Edge Function with Postman. It works perfectly. Then they open the browser and the same call silently fails. What is the most likely explanation, and what is the first thing they should check?
+
+**3.** The section says: “The server may return a 200 OK and the browser will still block the response.” In your own words, explain why that is not a contradiction. What are the two different perspectives at work?
+
+**4.** CORS failures produce no logs on the server side. What does that tell you about how to diagnose them? Which tool gives you the information you need, and what specifically should you look for?
+
+**5.** The wildcard `Access-Control-Allow-Origin: *` sounds like the simplest fix. The section says never use it with `Authorization` headers. Why? What goes wrong if you do?
+
+---
+
+## 🏁 Milestone 2b — Document Your Origins Before You Write Your First Edge Function
+
+CORS bugs are almost always preventable. They happen because someone writes an Edge Function before deciding what origins it needs to serve — then discovers the mismatch during testing, under pressure, when it is harder to think clearly.
+
+This milestone asks you to make that decision now, before the function exists.
+
+### Steps
+
+**1. Open `my-notes.md`** and add a new section:
+
+```
+## Section 02b — CORS Planning
+
+### My production origin
+[Paste your full Cloudflare Pages URL here, including https://
+and without a trailing slash. Example:
+https://community-ledger.pages.dev]
+
+### My local development origin(s)
+[List every localhost URL you use when testing locally.
+Include the port number. Example:
+http://localhost:5500
+http://localhost:3000
+If you are not sure yet, write the port number your editor’s
+live server uses by default.]
+
+### My ALLOWED_ORIGINS array
+[Write the complete array using the values above. Use this format:
+const ALLOWED_ORIGINS = [
+  'https://your-site.pages.dev',
+  'http://localhost:5500',
+];
+This is the exact array you will copy into every Edge Function
+you write for this project.]
+
+### The getCorsHeaders pattern
+[Copy the getCorsHeaders function from this section into your notes.
+Do not modify it. You will paste it into Edge Functions as-is.]
+
+### How I will remember to add CORS headers to every Edge Function
+[Write one sentence describing your system. Example:
+“I will keep a CORS template snippet in my notes and paste
+it as the first block inside every new Edge Function before
+writing any logic.”]
+```
+
+**2. Fill in all five fields.**
+
+**3. Save the file.**
+
+**4. Add this document to your `documentation_catalog`**
+- Go to Supabase → **SQL Editor**
+- Run an INSERT to add `02b-cors-and-browser-security.md` to the catalog
+- Use `doc_type = 'tutorial'`, `category = 'setup'`
+- Tags suggestion: `'cors', 'security', 'edge-functions', 'debugging', 'browser', 'headers'`
+
+> ### 💡 Help Your Future You — Keep the CORS Template in One Place
+> The CORS pattern is the same in every Edge Function. The only thing that changes is the list of allowed origins. Write it once, keep it in `my-notes.md`, and paste from there. Do not rewrite it from memory each time — one wrong character in a URL breaks every browser call to that function with no error message that points to the problem.
+
+---
+
+## ✅ Milestone Concept Check — Section 02b
+
+*Answer these after completing the milestone steps above.*
+
+**1.** You wrote down your production origin and your localhost origin(s). Look at them side by side. How many characters differ between the two? Now imagine you are in the browser, a call is silently failing, and you are trying to figure out whether the origin is the problem. Would you have caught the mismatch without this list in front of you?
+
+**2.** You copied the `getCorsHeaders` pattern into your notes. Read through it. There is one line that decides what to return if the incoming origin is *not* in the allowed list. What does it return in that case, and is that the right behavior for your project?
+
+**3.** You wrote a system for remembering to add CORS headers to every Edge Function. Is it a checklist, a template paste, a comment at the top of a file, or something else? How will you know if you forget to use it?
