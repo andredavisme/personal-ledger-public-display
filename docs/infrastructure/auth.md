@@ -1,45 +1,105 @@
-# Authentication Architecture
+# Infrastructure — Authentication
+**Last Updated:** May 29, 2026
+**Status:** Current
 
-## Current Provider: Netlify Identity
+> **Previous provider:** Netlify Identity was used as a temporary auth provider during the initial deployment phase. It has been fully replaced by Supabase Auth. See **Historical Note** at the bottom of this document.
 
-Netlify Identity is used as a **temporary auth provider** for the admin page during the initial deployment phase. It was chosen because:
-- It requires no backend code to implement
-- It is free and included in the Netlify free plan
-- It can be replaced entirely by changing one file (`assets/js/auth.js`)
+---
 
-### Admin Access Setup (Netlify)
-1. Enable Netlify Identity in the Netlify dashboard (Site Settings → Identity)
-2. Set registration to **Invite only**
-3. Invite the admin user by email
-4. In the Identity dashboard, assign the invited user the `admin` role
-5. The `Auth.isAdmin()` function in `auth.js` checks for this role
+## Current Provider: Supabase Auth
 
-## Future Provider: Supabase Auth
+Supabase Auth is the live, permanent authentication provider for this project. It is the same Supabase project (`hhyhulqngdkwsxhymmcd`) used for the database and Edge Functions.
 
-Supabase Auth is the intended long-term auth provider because:
-- It is already in the stack (same Supabase project)
-- It supports role-based access via JWT custom claims or `ledger.user_roles` table
-- It eliminates the Netlify dependency entirely
-- Migration is a single-file change (see `assets/js/auth.js` migration guide)
+### Admin Authentication
 
-### Migration Steps
-See the `MIGRATION GUIDE` comment block at the top of `assets/js/auth.js`.
+| Property | Value |
+|---|---|
+| Method | Email + password (Supabase Auth) |
+| Role gate | `public.profiles.show_role = 'admin'` |
+| Session scope | Supabase Auth JWT, managed by `@supabase/supabase-js` |
+| Registration | Closed — admin account created directly in Supabase Auth dashboard |
 
-## Auth Abstraction Layer
+**Flow:**
+1. Admin navigates to `/admin`
+2. `admin.js` calls `supabase.auth.getSession()`
+3. If no active session → redirect to `/login`
+4. After successful login, `admin.js` reads `public.profiles` for the authenticated user
+5. If `show_role !== 'admin'` → redirect to `/` (access denied)
+6. Admin UI renders only after both checks pass
 
-All auth calls in the application go through `assets/js/auth.js`.
+---
+
+### Community Representative Authentication
+
+| Property | Value |
+|---|---|
+| Method | Magic link sent to `public.submissions.contact_email` |
+| Role gate | `public.profiles.show_role = 'community_rep'` |
+| Session scope | Supabase Auth JWT |
+| Trigger | Assigned automatically by `handle_submission_approved` trigger on approval |
+
+**Flow:**
+1. Admin approves a submission
+2. `handle_submission_approved` trigger fires → creates Supabase Auth user for contact email, sets `show_role = 'community_rep'` in `public.profiles`
+3. Magic link sent to community contact email
+4. Rep clicks link → lands on `/portal`
+5. `portal.js` verifies session and `show_role = 'community_rep'`, scopes all queries to the rep’s `submission_id`
+
+---
+
+### Role Values
+
+Valid values for `public.profiles.show_role`:
+
+| Value | Access |
+|---|---|
+| `viewer` | Default — no elevated access |
+| `community_rep` | Community Finance Portal access, scoped to their submission |
+| `admin` | Full admin panel access |
+
+> **Important:** The value `'moderator'` was an early placeholder that was renamed to `'community_rep'`. It must not appear in any policy, function, or application code. See `docs/tutorial/08-debugging-role-naming-drift.md` and migration `rename_moderator_to_community_rep_in_rls` for the full record.
+
+---
+
+### Auth Abstraction Layer
+
+All auth calls go through `assets/js/auth.js`. No other file imports or calls Supabase Auth directly.
 
 ```
 Application code
      ↓
-  Auth.login()
-  Auth.logout()
-  Auth.getCurrentUser()
-  Auth.isAdmin()
+  auth.js
+  supabase.auth.getSession()
+  supabase.auth.signInWithPassword()
+  supabase.auth.signOut()
+  supabase.auth.onAuthStateChange()
      ↓
-  auth.js (single provider swap point)
-     ↓
-  Netlify Identity  →  (future) Supabase Auth
+  Supabase Auth (hhyhulqngdkwsxhymmcd)
 ```
 
-No other file imports or calls an auth provider directly.
+---
+
+### Supabase Auth Configuration
+
+- **Site URL:** `https://personal-ledger-public-display.pages.dev`
+- **Redirect URLs:** Include both production URL and `localhost` variants for local dev
+- **Email confirmations:** Enabled for magic link flow
+- **JWT expiry:** Default (1 hour); refresh tokens managed by Supabase client
+
+---
+
+## Historical Note — Netlify Identity (Deprecated)
+
+Netlify Identity was used as the auth provider during the first deployment phase. It was chosen because it required no backend code and was free on the Netlify plan.
+
+It was replaced by Supabase Auth when the project migrated from Netlify to Cloudflare Pages. Supabase Auth is already in the stack, supports role-based access via `public.profiles`, and eliminates the Netlify dependency entirely.
+
+Netlify Identity is no longer present in any file in this project. The `PROVIDER` abstraction in the original `auth.js` design (intended to allow a single-line swap) was replaced by a direct Supabase Auth implementation.
+
+---
+
+## Related Files
+- `docs/infrastructure/deployment.md` — hosting and deployment pipeline
+- `docs/architecture/community-finance-portal.md` — community rep portal auth flow
+- `docs/tutorial/08-debugging-role-naming-drift.md` — role naming incident and fix
+- Migration: `rename_moderator_to_community_rep_in_rls`
