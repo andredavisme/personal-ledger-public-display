@@ -1,6 +1,8 @@
 # Section 6 — Adjusting Fire
 ## What to Do When Your Plan Meets Reality
 
+> **Note:** This section is a case study, not a setup instruction. It preserves the real story of a hosting decision made mid-build so that you can learn from it as a pattern. The current hosting platform for this project is **Cloudflare Pages**. You set that up in Section 2. Nothing in this section asks you to change anything.
+
 ---
 
 ## A Term Worth Knowing
