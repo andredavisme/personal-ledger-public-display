@@ -26,6 +26,60 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 29, 2026 — Session 22
+**Status at close:** Budget allocation panel live in portal; progress dividers live on community page; all RLS policies corrected and verified working end-to-end. Test data cleaned up.
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| `budget_allocations` migration | New table: `id`, `submission_id`, `budget_item_id`, `allocated_amount`, `previously_allocated`, `saved_at`, `saved_by_user_id` — accumulating audit log of every save |
+| `submissions.budget_amounts_visible` column | `boolean NOT NULL DEFAULT false` — rep opt-in to show dollar amounts publicly vs. percentages only |
+| `portal-budget.js` (new module) | Slider panel in portal: loads `submission_budget` items grouped by tier (expected→desired→contingency); live "Available to Allocate" pool; over-allocation clamped; Save writes `actual_cost` + inserts audit row; visibility toggle updates `budget_amounts_visible` immediately |
+| `portal.js` updated | Imports and mounts `portal-budget.js` into new `#portal-budget-panel` section |
+| `community.js` updated | Progress dividers between community cards; per-tier allocation bars (blue/green/amber); shows % by default, switches to dollar amounts when `budget_amounts_visible = true`; donate nudge scrolls to that community's donate section; `budget_amounts_visible` fetched with submissions query |
+| `community.css` updated | Full `.cpd__*` styles — overall bar, tier bars, item bars, donate nudge, empty state |
+| `portal.css` updated | Full `.budget-panel`, `.budget-tier`, `.budget-slider-row` styles — pool banner, color-coded tiers, custom range sliders with per-tier thumb colors, fill bar, footer with visibility toggle |
+| RLS policies fixed | Initial policies used wrong join (`community_rep_requests.user_id`) — no rows existed; diagnosed and rewrote all 4 policies to use `submissions.email = auth.jwt() ->> 'email'` matching existing portal pattern |
+| Test data seeded and cleaned | $500 income record inserted to verify pool display; allocations saved and verified writing through; all test data (income record, audit rows, `actual_cost` values) removed clean |
+
+#### 🟡 Decisions Made This Session
+| Decision | Choice |
+|---|---|
+| Audit log accumulates | `budget_allocations` never overwrites — every save appends. History-only, not shown in portal UI yet |
+| Public display default | Percentages only until rep checks "Show dollar amounts publicly" in portal budget panel |
+| Allocation clamping | Sliders are hard-capped so total allocated never exceeds total received — no overdraft possible |
+| RLS join pattern | All budget-related rep policies use `submissions.email = auth.jwt() ->> 'email'` — consistent with every other portal policy in this project |
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Fill in real URLs on `about.html`** — "How this was Built", "207 Analytix", "André on LinkedIn" (all currently `href="#"`)
+- [ ] **Add About nav link to all other public pages** — once `about.html` links are filled
+- [ ] **Move Supabase anon key to Cloudflare Pages environment variables** — deferred; publishable key, not a security risk
+- [ ] **Budget allocation audit log viewer** — `budget_allocations` rows accumulate but are not yet surfaced anywhere in the portal UI; future feature
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+1. **Provide real URLs** for the three `about.html` placeholder links
+2. **Add About nav link** across all public pages
+3. **Consider next feature scope** — audit log viewer in portal, admin budget review, or other
+
+#### 📚 Commits & DB Changes This Session
+| Reference | What Changed |
+|---|---|
+| Commit `5330131` | `portal-budget.js` (new), `portal.js` (budget panel), `community.js` (progress dividers) |
+| Commit `249098b` | `community.css` (`.cpd__*`), `portal.css` (`.budget-panel`, `.budget-tier`, `.budget-slider-row`) |
+| Migration `add_budget_allocations_table_and_budget_amounts_visible` | `budget_allocations` table created; `submissions.budget_amounts_visible` column added |
+| Migration `rls_budget_rep_update_select_and_allocations_insert_select` | Initial 4 policies (wrong join — superseded) |
+| Migration `fix_budget_rls_use_email_join` | Dropped broken policies; recreated all 4 using `submissions.email = auth.jwt() ->> 'email'` |
+| DB (manual SQL) | $500 test income inserted and deleted; `actual_cost` zeroed; `budget_allocations` test rows deleted |
+| This commit | `docs/session-handoff.md` Session 22 closeout |
+
+---
+
 ### 🕒 May 29, 2026 — Session 21
 **Status at close:** All Session 20 open items resolved; Donation Pledges panel description cleaned up; test donation purged; `about.html` introduction page created with placeholder links.
 
@@ -99,18 +153,6 @@ At the beginning of every new thread or work session:
 | Wall celebration trigger | Admin action only (Mark Paid modal) — not automatic; admin confirms actual paid amount, system handles the rest |
 | `intended` filter on transparency page | Covers all three intended family types (`intended`, `intended_lower`, `intended_higher`) as a group |
 | `returned` records | Excluded entirely from all transparency page aggregations, charts, and display |
-
-#### 🟠 Open Items Carried Forward
-- [x] **Verify `transparency.html` live** — resolved Session 21
-- [x] **Verify `wall.html` live** — resolved Session 21
-- [x] **Verify admin "Mark Paid" flow live** — resolved Session 21
-- [x] **Audit `Auth.isAdmin()` callers in `admin.js`** — resolved Session 21
-
-#### 🔴 Known Issues
-| Issue | Status |
-|---|---|
-| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
-| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
 
 #### 📚 Commits & Migrations This Session
 | Reference | What Changed |
