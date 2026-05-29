@@ -13,20 +13,15 @@
  *   5. Supabase emails a magic link to that address
  *   6. User clicks the link → lands on auth/confirm.html which exchanges the token
  *   7. auth/confirm.html redirects to /portal.html → session established
- *   8. We verify the session email exists in public.submissions (approved)
- *   9. If verified → call onAuthenticated(user, submissionId) and show the portal
- *  10. If not found but user is an ADMIN (password login) → show admin notice
- *  11. If not found and not admin → sign out and show access-denied
+ *   8. We resolve the user's show_role from public.profiles
+ *   9. If show_role = 'admin' → show admin notice (portal is not for admins)
+ *  10. If show_role = 'community_rep' OR email matches an approved submission → show portal
+ *  11. Otherwise → sign out and show access-denied
  *
  * ADMIN DETECTION:
- *   Admin sessions use signInWithPassword (provider = 'email', no 'magiclink').
- *   Rep sessions use signInWithOtp (provider includes 'magiclink').
- *   We check user.app_metadata.providers to distinguish the two.
- *
- * REDIRECT URL:
- *   Handled entirely by the Supabase Magic Link email template.
- *   Template uses: {{ .SiteURL }}/auth/confirm.html?token_hash=...&next={{ .SiteURL }}/portal.html
- *   No emailRedirectTo needed in signInWithOtp.
+ *   Previously used app_metadata.providers heuristic (unreliable — magic links
+ *   also register an 'email' provider entry). Now resolved via profiles.show_role
+ *   directly from the database — the authoritative source of role truth.
  */
 
 import supabase from './supabase.js';
@@ -39,16 +34,21 @@ const PortalAuth = (() => {
   let _onAuthenticatedCallback = null;
   let _container = null;
 
-  // ─── Admin detection ─────────────────────────────────────────────────────
+  // ─── Role resolution ─────────────────────────────────────────────────────
 
   /**
-   * Returns true if the session belongs to an admin (password login).
-   * Admin accounts use signInWithPassword → provider is 'email' only.
-   * Community rep magic links → provider includes 'magiclink'.
+   * Fetches the authenticated user's show_role from public.profiles.
+   * Returns 'viewer' as the safe default if no profile row exists.
    */
-  function _isAdminUser(user) {
-    const providers = user?.app_metadata?.providers || [];
-    return providers.includes('email') && !providers.includes('magiclink');
+  async function _getShowRole() {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('show_role')
+      .eq('id', (await supabase.auth.getUser()).data.user?.id)
+      .maybeSingle();
+
+    if (error || !data) return 'viewer';
+    return data.show_role;
   }
 
   // ─── Screen builders ─────────────────────────────────────────────────────
@@ -146,10 +146,6 @@ const PortalAuth = (() => {
     });
   }
 
-  /**
-   * Shown when an admin navigates to portal.html while logged in.
-   * Gives them a clear explanation and a link back to admin.
-   */
   function _showAdminNoticeScreen(email) {
     _container.innerHTML = `
       <div class="portal-auth">
@@ -218,13 +214,15 @@ const PortalAuth = (() => {
   async function _verifySubmissionAccess(user) {
     _showLoadingScreen('Verifying your access…');
 
-    // ── Admin bypass ──────────────────────────────────────────────────────
-    if (_isAdminUser(user)) {
+    // ── Role-based routing (authoritative — reads profiles.show_role) ──────
+    const role = await _getShowRole();
+
+    if (role === 'admin') {
       _showAdminNoticeScreen(user.email);
       return;
     }
 
-    // ── Community rep check ───────────────────────────────────────────────
+    // ── Community rep: verify approved submission exists for this email ────
     const { data, error } = await supabase
       .from('submissions')
       .select('id')
