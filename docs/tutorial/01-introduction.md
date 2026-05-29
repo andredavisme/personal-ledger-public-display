@@ -119,3 +119,61 @@ But before you go there — take a few minutes with the questions below.
 **3.** Describe the difference between using AI to help you build something versus using AI to build something for you. Why does that distinction matter for a project like this one?
 
 **4.** What community do you have in mind as you begin this project? It does not need to be an existing organization — it can be something you wish existed. Describe it in a few sentences.
+
+---
+
+## 🏁 Milestone 1 — Write Your Community Into Existence
+
+You have read about what this project does and why. Now it is time to do something concrete: write down the community you are building this for.
+
+This is not a creative writing exercise. It is a decision. When you write a specific community — real or imagined — into your notes, every section that follows becomes about *that* community. The abstract concepts in the tutorial get anchored to something you actually care about. That makes them easier to understand, easier to remember, and easier to apply.
+
+### Steps
+
+**1. Open `my-notes.md`** (the file you created in Milestone 0).
+
+**2. Add a new entry** below your Section 0 notes:
+
+```
+## Section 1 — My Community
+
+### Community name
+[Write a name for the community you are imagining. It can be real or invented.]
+
+### What they do
+[Write 1–2 sentences describing what this community does. What is its purpose?]
+
+### Who they serve
+[Write 1–2 sentences describing the people this community exists for.]
+
+### Why financial transparency matters for them
+[Write 1–2 sentences describing why a public ledger would be meaningful or useful
+for this specific community. What trust would it build? What question would it answer?]
+
+### The values I want this application to reflect for this community
+[List 2–3 values. Use the ones from the tutorial if they fit, or name your own.]
+
+### How I will use AI in this build
+[Write one sentence committing to how you will use AI in this project. Will you
+read everything it produces? Will you ask why before copying? Write the commitment
+in your own words.]
+```
+
+**3. Fill in every field.** Do not skip the AI commitment line — writing it down makes it real.
+
+**4. Save the file.**
+
+> ### 💡 Help Your Future You — Specificity Is the Antidote to Confusion
+> A vague community description (“a local nonprofit”) will produce vague thinking every time you hit a confusing part of the tutorial. A specific one (“Westside Community Garden Collective, which manages a shared plot for 40 families and runs a monthly seed exchange”) gives you something to reason from. Every time a section asks you to make a decision, you will be able to ask: *What would this community actually need?*
+
+---
+
+## ✅ Milestone Concept Check — Section 1
+
+*Answer these after completing the milestone steps above.*
+
+**1.** You just wrote a values list for your community. Look at the four values from the tutorial (Transparency, Accountability, Accessibility, Community Ownership). Did all four apply? Did you add different ones? What does that tell you about your community?
+
+**2.** You wrote an AI commitment. Read it back. Is it specific enough that you could hold yourself to it? If it says something vague like “I’ll be careful,” rewrite it with one concrete behavior — something you will *do*, not just intend.
+
+**3.** If someone else read your community description right now, could they answer: *What does this community do? Who does it serve? Why does transparency matter to them?* If any of those three questions is still unclear, add another sentence.
