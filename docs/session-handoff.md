@@ -26,6 +26,58 @@ At the beginning of every new thread or work session:
 
 ---
 
+### 🕒 May 29, 2026 — Session 19
+**Status at close:** Role system overhauled; portal access fully working for `andre.davis.me@gmail.com`; admin finance Return to Submitter flow working end-to-end. Ready to begin `transparency.html` work.
+
+#### ✅ Completed
+| Item | Notes |
+|---|---|
+| Diagnosed RLS `moderator` → `community_rep` naming drift | All 10 RLS policies across 8 tables were checking for `'moderator'` — a placeholder from early development that was never updated when the role was formally named `community_rep`. Zero errors surfaced; both sides were individually correct. Fix: rewrote all policies + tightened `profiles_show_role_check` constraint to `('viewer', 'community_rep', 'admin')` |
+| Diagnosed portal redirect false positive | `portal-auth.js` was detecting admins via `app_metadata.providers` heuristic — unreliable because magic links also register an `'email'` provider. Replaced with direct `profiles.show_role` lookup. |
+| Added `is_admin` boolean to `profiles` | `show_role` is a single-value text field — can't hold two roles. Added `is_admin boolean NOT NULL DEFAULT false` column. Backfilled from `show_role = 'admin'`. Admin panel access now governed by `is_admin`; portal role governed by `show_role`. |
+| Set `andre.davis.me@gmail.com` to both roles | `is_admin = true`, `show_role = 'community_rep'` — single account can access both admin panel and community portal |
+| Deleted `admin@afferentsignal.com` | Was created when two-account assumption was in play. No longer needed. Removed from `auth.users`. |
+| `auth.js` `isAdmin()` updated | Now async — queries `profiles.is_admin` instead of returning `!!_currentUser` |
+| `portal-auth.js` routing updated | Uses `_getProfile()` to read both `is_admin` and `show_role`. Admin-only accounts see notice screen. `is_admin = true` + `show_role = 'community_rep'` routes to portal. |
+| Added second button to admin notice screen | "Sign Out & Sign In as Community Rep" — signs out admin session and drops to magic-link request screen with context message |
+| Fixed `community_financials_status_check` constraint | `'returned'` was written in JS and the edge function but never included in the DB constraint. Added `'returned'` to the allowed values. |
+| Return to Submitter flow verified end-to-end | Modal opens, notes required, Send & Return calls edge function, status set to `returned` in DB — confirmed working |
+
+#### 🟡 Decisions Made This Session
+| Decision | Choice |
+|---|---|
+| Multi-role architecture | `is_admin` boolean (admin panel access) + `show_role` text (portal-facing role) — independent columns, not an array |
+| Adding a future admin | Set `is_admin = true` on their `profiles` row — `show_role` is unaffected |
+| Portal routing for dual-role user | `is_admin = true` + `show_role = 'community_rep'` → portal loads directly (no admin notice) |
+
+#### 🟠 Open Items Carried Forward
+- [ ] **Build `transparency.html` display and features** — public four-stage pipeline page; **next session focus** — live at `https://personal-ledger-public-display.pages.dev/transparency`
+- [ ] **Audit callers of `Auth.isAdmin()`** in `admin.js` — confirm all calls use `await` (isAdmin is now async)
+- [ ] **Verify all public-facing pages** with real approved data — Community Page, Recognition Wall
+
+#### 🔴 Known Issues
+| Issue | Status |
+|---|---|
+| `Auth.isAdmin()` is now async | Any calling code using it synchronously needs `await` — audit `admin.js` first thing next session |
+| Supabase project is shared with alexandria-training-portal | Both redirect URLs in allowlist — monitored, not a blocker |
+| Legacy anon JWT key exists in Supabase | Unused in this project, not a risk |
+
+#### 📍 Where to Resume
+1. **Audit `admin.js`** — search for `isAdmin()` calls, ensure all use `await Auth.isAdmin()`
+2. **Begin `transparency.html` build** — live URL: `https://personal-ledger-public-display.pages.dev/transparency`
+3. Reference `docs/architecture/transparency-page.md` for the four-stage pipeline spec
+
+#### 📚 Commits & Migrations This Session
+| Reference | What Changed |
+|---|---|
+| Migration `rename_moderator_to_community_rep_in_rls` | Rewrote all 10 RLS policies replacing `'moderator'` with `'community_rep'`; tightened `profiles_show_role_check` constraint |
+| Migration `add_is_admin_to_profiles_and_set_andre` | Added `is_admin` boolean to `profiles`; backfilled; set andre to `community_rep` + `is_admin = true`; deleted `admin@afferentsignal.com` |
+| Migration `add_returned_to_community_financials_status_check` | Added `'returned'` to `community_financials_status_check` constraint |
+| Commit `a241522` | `portal-auth.js` + `auth.js` — full `is_admin` / `show_role` dual-role implementation |
+| This commit | `docs/session-handoff.md` Session 19 closeout |
+
+---
+
 ### 🕒 May 29, 2026 — Session 18
 **Status at close:** OTP 500 error root cause identified — database trigger type mismatch on `auth.users`; fix not yet applied
 
