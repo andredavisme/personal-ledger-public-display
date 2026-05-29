@@ -1,5 +1,5 @@
 # Architecture — Community Finance Portal
-**Last Updated:** May 28, 2026
+**Last Updated:** May 29, 2026
 
 > This document defines the full architecture for the Community Finance Portal — the magic-link-gated hub where community representatives manage their ongoing relationship with donors and administrators.
 
@@ -22,13 +22,13 @@ This portal feeds directly into the transparency page and admin verification wor
 
 | Method | Detail |
 |---|---|
-| Primary | **Magic link** sent to the community's submission email (`public.submissions.contact_email`) |
+| Primary | **Magic link** sent to the community’s submission email (`public.submissions.contact_email`) |
 | Fallback | Gmail OAuth if magic link creates conflicts with existing auth sessions |
 | Session scope | Supabase Auth — same project (`hhyhulqngdkwsxhymmcd`) |
 
-When a community rep clicks their magic link, they are authenticated as a Supabase user and their session is scoped to their community's `submission_id`.
+When a community rep clicks their magic link, they are authenticated as a Supabase user and their session is scoped to their community’s `submission_id`.
 
-> The portal must verify that the authenticated user's email matches a row in `public.submissions` and read the associated `submission_id` for all subsequent queries.
+> The portal must verify that the authenticated user’s email matches a row in `public.submissions` and read the associated `submission_id` for all subsequent queries.
 
 ---
 
@@ -79,7 +79,7 @@ When a community rep clicks their magic link, they are authenticated as a Supaba
 1. Rep writes a message (text only, no HTML)
 2. Message stored in `public.community_financials` with `type = message`, `status = pending`
 3. Admin reviews and approves
-4. Approved message displayed on community's public page or transparency card
+4. Approved message displayed on community’s public page or transparency card
 
 **Form Fields:**
 - Message body (text area, max 500 characters)
@@ -125,9 +125,11 @@ message:  pending → approved | rejected  (admin reviews)
 | Policy | Detail |
 |---|---|
 | Community rep INSERT | Authenticated user whose email matches a `submissions.contact_email` row may insert rows scoped to that `submission_id` |
-| Community rep SELECT | Same scope — rep may only read their own community's records |
-| Admin ALL | Admin/moderator role (`profiles.show_role`) may read, update, and delete any row |
+| Community rep SELECT | Same scope — rep may only read their own community’s records |
+| Admin ALL | `profiles.show_role IN ('admin', 'community_rep')` — see Note below |
 | Anon SELECT | `status IN ('verified', 'approved')` rows only — feeds transparency page without auth |
+
+> **Note on role values:** The valid `show_role` values in `public.profiles` are `'viewer'`, `'community_rep'`, and `'admin'`. The value `'moderator'` was an early placeholder that was renamed to `'community_rep'` in migration `rename_moderator_to_community_rep_in_rls`. Do not use `'moderator'` in any new policy. See `docs/tutorial/08-debugging-role-naming-drift.md` for the full incident record.
 
 ---
 
