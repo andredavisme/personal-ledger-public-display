@@ -1,17 +1,9 @@
 /**
  * admin-finance.js — Admin Finance Verification Panel
  *
- * Loads all community_financials rows newest first,
- * joined with submissions.community_name and submissions.email.
- *
- * Per-row actions (always visible; greyed out when not applicable):
- *   - Promote: pending → self_reported → verified → approved
- *   - Approve: shortcut for intended + self_reported → approved
- *   - Mark Verified: shortcut for intended + pending → verified
- *   - Suppress: sets status = 'suppressed', removes from all calculations
- *   - Mark Paid: intended + approved only
- *   - View Doc: only active when document_url is present
- *   - Return: always active unless already returned/suppressed/rejected
+ * Per-row actions:
+ *   Active → full colored button (btn--primary / success / danger / warning / secondary)
+ *   Inactive → small dim ghost label (no border, no color, cursor:default, title explains why)
  */
 
 import supabase from './supabase.js';
@@ -41,13 +33,10 @@ const TYPE_LABEL = {
   message:         'Message',
 };
 
-// Inline style applied to every disabled/inactive button
-const INACTIVE_STYLE = 'opacity:0.35;cursor:not-allowed;pointer-events:none;';
-
-let activeReturnId   = null;
-let activeMarkPaidId = null;
+let activeReturnId    = null;
+let activeMarkPaidId  = null;
 let activeMarkPaidRow = null;
-let delegationWired  = false;
+let delegationWired   = false;
 
 document.addEventListener('admin:ready', () => {
   wireDelegation();
@@ -65,16 +54,16 @@ function wireDelegation() {
     const action = btn.dataset.action;
     const id     = btn.dataset.id;
 
-    if (action === 'promote')              await handlePromote(btn, id, btn.dataset.next);
-    else if (action === 'approve-intent')  await handleApprove(btn, id);
-    else if (action === 'suppress')        await handleSuppress(btn, id);
-    else if (action === 'viewdoc')         await handleViewDoc(btn, btn.dataset.path);
-    else if (action === 'return')          { activeReturnId = id; openReturnModal(btn.dataset.type, btn.dataset.desc, btn.dataset.date); }
+    if (action === 'promote')                    await handlePromote(btn, id, btn.dataset.next);
+    else if (action === 'approve-intent')        await handleApprove(btn, id);
+    else if (action === 'suppress')              await handleSuppress(btn, id);
+    else if (action === 'viewdoc')               await handleViewDoc(btn, btn.dataset.path);
+    else if (action === 'return')                { activeReturnId = id; openReturnModal(btn.dataset.type, btn.dataset.desc, btn.dataset.date); }
     else if (action === 'finance-return-send')   { if (activeReturnId) await handleReturn(activeReturnId); }
     else if (action === 'finance-return-cancel') closeReturnModal();
-    else if (action === 'markpaid')        openMarkPaidModal(id, btn.dataset.amount, btn.dataset.desc, btn.dataset.submission);
-    else if (action === 'markpaid-send')   { if (activeMarkPaidId) await handleMarkPaid(); }
-    else if (action === 'markpaid-cancel') closeMarkPaidModal();
+    else if (action === 'markpaid')              openMarkPaidModal(id, btn.dataset.amount, btn.dataset.desc, btn.dataset.submission);
+    else if (action === 'markpaid-send')         { if (activeMarkPaidId) await handleMarkPaid(); }
+    else if (action === 'markpaid-cancel')       closeMarkPaidModal();
   });
 }
 
@@ -148,13 +137,18 @@ async function loadFinancePanel() {
   document.getElementById('markpaid-amount')?.addEventListener('input', updateVarianceHint);
 }
 
-// Helper: build a button that is always rendered but optionally disabled/greyed
-function btn(label, action, id, extraData, colorClass, active, title = '') {
-  const inactive = !active;
-  const style    = inactive ? INACTIVE_STYLE : '';
-  const dis      = inactive ? 'disabled' : '';
-  const tip      = title ? `title="${escHtml(title)}"` : '';
-  return `<button type="button" class="btn btn--small ${colorClass}" data-action="${action}" data-id="${escHtml(id)}" ${extraData} ${dis} ${tip} style="${style}">${label}</button>`;
+/**
+ * Render an action button.
+ * active=true  → full colored btn
+ * active=false → dim ghost span (no border, no fill, cursor:default)
+ */
+function actionBtn(label, action, id, extraData, colorClass, active, title = '') {
+  const tip = title ? `title="${escHtml(title)}"` : '';
+  if (active) {
+    return `<button type="button" class="btn btn--small ${colorClass}" data-action="${action}" data-id="${escHtml(id)}" ${extraData} ${tip}>${label}</button>`;
+  }
+  // Inactive: ghost text — present for orientation, invisible as a CTA
+  return `<span class="btn-ghost" data-action="${action}" data-id="${escHtml(id)}" ${tip} style="display:inline-block;padding:0.2rem 0.5rem;font-size:0.72rem;color:#9ca3af;cursor:default;user-select:none;">${label}</span>`;
 }
 
 function buildRow(row) {
@@ -170,60 +164,54 @@ function buildRow(row) {
     ? `<span class="finance-paid-badge">✓ Paid${row.paid_amount != null ? ` ($${Number(row.paid_amount).toFixed(2)})` : ''}</span>`
     : '';
 
-  // ─ Promote (pipeline step) ─────────────────────────────────────────────────
-  // Active when a next pipeline step exists
+  // ─ Promote ─────────────────────────────────────────────────────────────────
   const promoteActive = !!nextStatus;
-  const promoteLabel  = nextStatus ? PROMOTE_LABEL[status] : (isTerminal ? STATUS_LABEL[status] : 'Promote');
+  const promoteLabel  = nextStatus ? PROMOTE_LABEL[status] : (isTerminal ? statusLabel : 'Promote');
   const promoteExtra  = nextStatus ? `data-next="${nextStatus}"` : '';
   const promoteTitle  = promoteActive ? '' : (isTerminal ? 'No further pipeline steps' : 'Already at final status');
-  const promoteBtn    = btn(promoteLabel, 'promote', row.id, promoteExtra, 'btn--primary', promoteActive, promoteTitle);
+  const promoteBtn    = actionBtn(promoteLabel, 'promote', row.id, promoteExtra, 'btn--primary', promoteActive, promoteTitle);
 
-  // ─ Approve shortcut ──────────────────────────────────────────────────
-  // Active: intended + self_reported only
+  // ─ Approve shortcut ────────────────────────────────────────────────────────
   const approveActive = row.type === 'intended' && status === 'self_reported';
-  const approveTitle  = approveActive ? 'Skip pipeline and approve directly' :
-    row.type !== 'intended' ? 'Only for intended donation rows' :
+  const approveTitle  = approveActive ? 'Skip pipeline — approve directly' :
+    row.type !== 'intended' ? 'Intended rows only' :
     status === 'approved'   ? 'Already approved' :
-    'Available once row reaches Self-Reported status';
-  const approveBtn2   = btn('Approve', 'approve-intent', row.id, '', 'btn--success', approveActive, approveTitle);
+    'Available at Self-Reported status';
+  const approveBtn    = actionBtn('Approve', 'approve-intent', row.id, '', 'btn--success', approveActive, approveTitle);
 
-  // ─ Suppress ───────────────────────────────────────────────────────
-  // Active: intended rows, not already suppressed/rejected/approved+paid
+  // ─ Suppress ────────────────────────────────────────────────────────────────
   const suppressActive = row.type === 'intended' &&
     !['suppressed', 'rejected'].includes(status) &&
     !(status === 'approved' && row.paid);
   const suppressTitle  = suppressActive ? 'Remove from all calculations silently' :
-    row.type !== 'intended'  ? 'Only for intended donation rows' :
-    status === 'suppressed'  ? 'Already suppressed' :
-    status === 'rejected'    ? 'Already rejected' :
-    'Cannot suppress after payment is confirmed';
-  const suppressBtn2   = btn('Suppress', 'suppress', row.id, '', 'btn--danger', suppressActive, suppressTitle);
+    row.type !== 'intended' ? 'Intended rows only' :
+    status === 'suppressed' ? 'Already suppressed' :
+    status === 'rejected'   ? 'Already rejected' :
+    'Cannot suppress after payment confirmed';
+  const suppressBtn    = actionBtn('Suppress', 'suppress', row.id, '', 'btn--danger', suppressActive, suppressTitle);
 
-  // ─ Mark Paid ──────────────────────────────────────────────────────
-  // Active: intended + approved + not yet paid
+  // ─ Mark Paid ───────────────────────────────────────────────────────────────
   const markPaidActive = row.type === 'intended' && status === 'approved' && !row.paid;
   const markPaidExtra  = markPaidActive
     ? `data-amount="${escHtml(String(row.amount || 0))}" data-desc="${escHtml(row.description || '')}" data-submission="${escHtml(row.submission_id)}"`
     : '';
   const markPaidTitle  = markPaidActive ? '' :
-    row.type !== 'intended' ? 'Only for intended donation rows' :
+    row.type !== 'intended' ? 'Intended rows only' :
     row.paid                ? 'Already marked paid' :
     'Requires Approved status first';
-  const markPaidBtn2   = btn('Mark Paid', 'markpaid', row.id, markPaidExtra, 'btn--success', markPaidActive, markPaidTitle);
+  const markPaidBtn    = actionBtn('Mark Paid', 'markpaid', row.id, markPaidExtra, 'btn--success', markPaidActive, markPaidTitle);
 
-  // ─ View Doc ─────────────────────────────────────────────────────────
-  // Active: only when a document_url is present
+  // ─ View Doc ─────────────────────────────────────────────────────────────────
   const docActive = !!row.document_url;
   const docExtra  = docActive ? `data-path="${escHtml(row.document_url)}"` : '';
-  const docTitle  = docActive ? '' : 'No document attached to this submission';
-  const docBtn2   = btn('View Doc', 'viewdoc', row.id, docExtra, 'btn--secondary', docActive, docTitle);
+  const docTitle  = docActive ? '' : 'No document attached';
+  const docBtn    = actionBtn('View Doc', 'viewdoc', row.id, docExtra, 'btn--secondary', docActive, docTitle);
 
-  // ─ Return ───────────────────────────────────────────────────────────
-  // Inactive once already returned, suppressed, or rejected
+  // ─ Return ───────────────────────────────────────────────────────────────────
   const returnActive = !['returned', 'suppressed', 'rejected'].includes(status);
   const returnExtra  = `data-type="${escHtml(row.type)}" data-desc="${escHtml(row.description || '')}" data-date="${escHtml(row.submitted_at)}"`;
   const returnTitle  = returnActive ? '' : `Already ${statusLabel.toLowerCase()} — return not available`;
-  const returnBtn2   = btn('Return', 'return', row.id, returnExtra, 'btn--warning', returnActive, returnTitle);
+  const returnBtn    = actionBtn('Return', 'return', row.id, returnExtra, 'btn--warning', returnActive, returnTitle);
 
   return `
     <tr data-finance-id="${escHtml(row.id)}">
@@ -233,7 +221,11 @@ function buildRow(row) {
       <td>${escHtml(row.description || '—')}</td>
       <td>${escHtml(amountStr)} ${paidBadge}</td>
       <td><span class="finance-status finance-status--${escHtml(status)}">${escHtml(statusLabel)}</span></td>
-      <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">${promoteBtn}${approveBtn2}${suppressBtn2}${markPaidBtn2}${docBtn2}${returnBtn2}</td>
+      <td>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.35rem 0.5rem;align-items:center;min-width:200px;">
+          ${promoteBtn}${approveBtn}${suppressBtn}${markPaidBtn}${docBtn}${returnBtn}
+        </div>
+      </td>
     </tr>`;
 }
 
@@ -256,7 +248,7 @@ async function handlePromote(btn, id, nextStatus) {
   loadFinancePanel();
 }
 
-// ─── Approve shortcut ──────────────────────────────────────────────────────────
+// ─── Approve shortcut ────────────────────────────────────────────────────────
 
 async function handleApprove(btn, id) {
   if (!confirm('Approve this intended donation directly? This skips the standard verification pipeline.')) return;
@@ -276,7 +268,7 @@ async function handleApprove(btn, id) {
   loadFinancePanel();
 }
 
-// ─── Suppress ───────────────────────────────────────────────────────────────
+// ─── Suppress ────────────────────────────────────────────────────────────────
 
 async function handleSuppress(btn, id) {
   if (!confirm('Suppress this record? It will be removed from all calculations silently. This cannot be undone from the panel.')) return;
