@@ -6,7 +6,7 @@
  * RESPONSIBILITIES:
  *   1. Mount PortalAuth into #portal-root
  *   2. On auth: render the rep dashboard (header + sections)
- *   3. Three-tab form: Intended | Expense | Message
+ *   3. Three-tab form: Income | Expense | Message
  *   4. File upload to Supabase Storage (community-docs bucket)
  *   5. Insert record into public.community_financials
  *   6. Load and display the rep's submission history
@@ -30,14 +30,14 @@ import * as Budget from './portal-budget.js';
 // ─── Tab config ─────────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: 'intended', label: '🎯 Log Intended'  },
-  { key: 'expense',  label: '💸 Log Expense'   },
-  { key: 'message',  label: '✏️ Add Message'  },
+  { key: 'income',  label: '💰 Log Income'   },
+  { key: 'expense', label: '💸 Log Expense'  },
+  { key: 'message', label: '✏️ Add Message' },
 ];
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
-let _activeTab      = 'intended';
+let _activeTab      = 'income';
 let _submissionId   = null;
 let _user           = null;
 let _communityName  = '';
@@ -80,7 +80,7 @@ function _renderPortal() {
       <div class="portal__section" id="portal-form-section">
         <h2 class="portal__section-title">Submit a Financial Record</h2>
         <p class="portal__section-desc">
-          Log intended donations, expenses (funds applied), or messages
+          Log income received, expenses (funds applied), or messages
           to keep the transparency page current. All submissions are reviewed by
           our admin team before they appear publicly.
         </p>
@@ -149,21 +149,21 @@ function _setTab(key) {
 function _renderForm(tab) {
   const area = document.getElementById('portal-form-area');
   if (!area) return;
-  if (tab === 'intended') area.innerHTML = _intendedFormHtml();
-  if (tab === 'expense')  area.innerHTML = _expenseFormHtml();
-  if (tab === 'message')  area.innerHTML = _messageFormHtml();
+  if (tab === 'income')  area.innerHTML = _incomeFormHtml();
+  if (tab === 'expense') area.innerHTML = _expenseFormHtml();
+  if (tab === 'message') area.innerHTML = _messageFormHtml();
   area.querySelector('form')?.addEventListener('submit', e => {
     e.preventDefault();
     _handleSubmit(tab, e.target);
   });
 }
 
-function _intendedFormHtml() {
+function _incomeFormHtml() {
   return `
     <form class="portal__form" id="portal-record-form" novalidate>
       <div class="portal__form-row">
         <div class="portal__field">
-          <label for="pf-amount">Amount Intended (USD) <span style="color:#b91c1c">*</span></label>
+          <label for="pf-amount">Amount Received (USD) <span style="color:#b91c1c">*</span></label>
           <input type="number" id="pf-amount" name="amount" min="0.01" step="0.01" placeholder="0.00" required />
         </div>
         <div class="portal__field">
@@ -183,7 +183,7 @@ function _intendedFormHtml() {
         <span class="portal__field-hint">PDF or image. Max 5 MB. Stored securely — visible to admins only.</span>
       </div>
       <div id="portal-form-feedback"></div>
-      <button type="submit" class="portal__submit">Submit Intended</button>
+      <button type="submit" class="portal__submit">Submit Income</button>
     </form>
   `;
 }
@@ -254,7 +254,7 @@ async function _handleSubmit(tab, form) {
     const notes       = form.notes?.value       ? form.notes.value.trim()        : null;
     const file        = form.file?.files?.[0] || null;
 
-    if ((tab === 'intended' || tab === 'expense') && (!amount || amount <= 0))
+    if ((tab === 'income' || tab === 'expense') && (!amount || amount <= 0))
       throw new Error('Please enter a valid amount greater than 0.');
     if ((tab === 'expense' || tab === 'message') && !description)
       throw new Error('Description is required.');

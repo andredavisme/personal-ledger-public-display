@@ -441,6 +441,7 @@ async function handleIntentSubmit(event) {
   const amountVisibleOnWall = intentFormEl.amount_visible_on_wall.checked;
 
   try {
+    // 1. Insert donation intent record
     const { data: inserted, error } = await supabase.from('donations').insert({
       submission_id:          activeSubmissionId,
       donor_name:             donorName || null,
@@ -457,6 +458,29 @@ async function handleIntentSubmit(event) {
 
     if (error) throw error;
 
+    // 2. Auto-log an intended record in community_financials linked to this donation
+    if (inserted?.id) {
+      const community      = communityLookup.get(activeSubmissionId);
+      const communityLabel = community ? community.community_name : null;
+      const description    = donorName
+        ? `Intended donation from ${donorName}${activeMethod ? ` via ${activeMethod}` : ''}`
+        : `Intended donation${activeMethod ? ` via ${activeMethod}` : ''}`;
+
+      supabase.from('community_financials').insert({
+        submission_id: activeSubmissionId,
+        donation_id:   inserted.id,
+        type:          'intended',
+        status:        'self_reported',
+        amount,
+        currency:      'USD',
+        description,
+        notes:         donorEmail ? `Donor email: ${donorEmail}` : null,
+      }).then(({ error: cfErr }) => {
+        if (cfErr) console.warn('[community] community_financials auto-insert failed:', cfErr.message);
+      });
+    }
+
+    // 3. Send receipt email (fire-and-forget)
     if (inserted?.id) {
       fetch(`${SUPABASE_URL}/functions/v1/send-donation-receipt`, {
         method:  'POST',
