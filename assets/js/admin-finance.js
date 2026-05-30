@@ -4,15 +4,14 @@
  * Loads all community_financials rows newest first,
  * joined with submissions.community_name and submissions.email.
  *
- * Per-row actions:
- *   - Promote status: pending → self_reported → verified → approved
- *   - Approve (shortcut): intended + self_reported → approved directly
+ * Per-row actions (always visible; greyed out when not applicable):
+ *   - Promote: pending → self_reported → verified → approved
+ *   - Approve: shortcut for intended + self_reported → approved
+ *   - Mark Verified: shortcut for intended + pending → verified
  *   - Suppress: sets status = 'suppressed', removes from all calculations
- *   - Mark Paid (intended + approved only): sets paid=true, paid_amount,
- *     auto-inserts intended_lower or intended_higher variance record,
- *     promotes wall entry to sort_order=0 + featured=true for intended_higher
- *   - View Doc: generate signed URL from community-docs storage and open
- *   - Return to Submitter: modal with notes → send-finance-return-email edge fn
+ *   - Mark Paid: intended + approved only
+ *   - View Doc: only active when document_url is present
+ *   - Return: always active unless already returned/suppressed/rejected
  */
 
 import supabase from './supabase.js';
@@ -42,10 +41,13 @@ const TYPE_LABEL = {
   message:         'Message',
 };
 
-let activeReturnId  = null;
+// Inline style applied to every disabled/inactive button
+const INACTIVE_STYLE = 'opacity:0.35;cursor:not-allowed;pointer-events:none;';
+
+let activeReturnId   = null;
 let activeMarkPaidId = null;
 let activeMarkPaidRow = null;
-let delegationWired = false;
+let delegationWired  = false;
 
 document.addEventListener('admin:ready', () => {
   wireDelegation();
@@ -59,6 +61,7 @@ function wireDelegation() {
   document.addEventListener('click', async e => {
     const btn = e.target.closest('[data-action]');
     if (!btn || !btn.closest('#finance-panel')) return;
+    if (btn.disabled) return;
     const action = btn.dataset.action;
     const id     = btn.dataset.id;
 
@@ -142,8 +145,16 @@ async function loadFinancePanel() {
       </div>
     </div>`;
 
-  // Live variance hint
   document.getElementById('markpaid-amount')?.addEventListener('input', updateVarianceHint);
+}
+
+// Helper: build a button that is always rendered but optionally disabled/greyed
+function btn(label, action, id, extraData, colorClass, active, title = '') {
+  const inactive = !active;
+  const style    = inactive ? INACTIVE_STYLE : '';
+  const dis      = inactive ? 'disabled' : '';
+  const tip      = title ? `title="${escHtml(title)}"` : '';
+  return `<button type="button" class="btn btn--small ${colorClass}" data-action="${action}" data-id="${escHtml(id)}" ${extraData} ${dis} ${tip} style="${style}">${label}</button>`;
 }
 
 function buildRow(row) {
@@ -154,30 +165,65 @@ function buildRow(row) {
   const typeLabel   = TYPE_LABEL[row.type] || row.type;
   const amountStr   = row.amount != null ? `$${Number(row.amount).toFixed(2)} ${row.currency || 'USD'}` : '—';
   const nextStatus  = STATUS_NEXT[status];
-  const paidBadge   = row.paid ? `<span class="finance-paid-badge">✓ Paid${row.paid_amount != null ? ` ($${Number(row.paid_amount).toFixed(2)})` : ''}</span>` : '';
-
-  // Standard promote button (pipeline step)
-  const promoteBtn = nextStatus
-    ? `<button type="button" class="btn btn--small btn--primary" data-action="promote" data-id="${escHtml(row.id)}" data-next="${nextStatus}">${PROMOTE_LABEL[status]}</button>`
+  const isTerminal  = ['approved', 'returned', 'suppressed', 'rejected'].includes(status);
+  const paidBadge   = row.paid
+    ? `<span class="finance-paid-badge">✓ Paid${row.paid_amount != null ? ` ($${Number(row.paid_amount).toFixed(2)})` : ''}</span>`
     : '';
 
-  // Approve shortcut — only for intended rows that are self_reported (donor-submitted, skip pipeline)
-  const approveBtn = (row.type === 'intended' && status === 'self_reported')
-    ? `<button type="button" class="btn btn--small btn--success" data-action="approve-intent" data-id="${escHtml(row.id)}" title="Skip pipeline and approve directly">Approve</button>`
-    : '';
+  // ─ Promote (pipeline step) ─────────────────────────────────────────────────
+  // Active when a next pipeline step exists
+  const promoteActive = !!nextStatus;
+  const promoteLabel  = nextStatus ? PROMOTE_LABEL[status] : (isTerminal ? STATUS_LABEL[status] : 'Promote');
+  const promoteExtra  = nextStatus ? `data-next="${nextStatus}"` : '';
+  const promoteTitle  = promoteActive ? '' : (isTerminal ? 'No further pipeline steps' : 'Already at final status');
+  const promoteBtn    = btn(promoteLabel, 'promote', row.id, promoteExtra, 'btn--primary', promoteActive, promoteTitle);
 
-  // Suppress — only for intended rows that are not already suppressed, rejected, or approved+paid
-  const suppressBtn = (row.type === 'intended' && !['suppressed', 'rejected'].includes(status) && !(status === 'approved' && row.paid))
-    ? `<button type="button" class="btn btn--small btn--danger" data-action="suppress" data-id="${escHtml(row.id)}" title="Remove from all calculations silently">Suppress</button>`
-    : '';
+  // ─ Approve shortcut ──────────────────────────────────────────────────
+  // Active: intended + self_reported only
+  const approveActive = row.type === 'intended' && status === 'self_reported';
+  const approveTitle  = approveActive ? 'Skip pipeline and approve directly' :
+    row.type !== 'intended' ? 'Only for intended donation rows' :
+    status === 'approved'   ? 'Already approved' :
+    'Available once row reaches Self-Reported status';
+  const approveBtn2   = btn('Approve', 'approve-intent', row.id, '', 'btn--success', approveActive, approveTitle);
 
-  const markPaidBtn = (row.type === 'intended' && status === 'approved' && !row.paid)
-    ? `<button type="button" class="btn btn--small btn--success" data-action="markpaid" data-id="${escHtml(row.id)}" data-amount="${escHtml(String(row.amount || 0))}" data-desc="${escHtml(row.description || '')}" data-submission="${escHtml(row.submission_id)}">Mark Paid</button>`
+  // ─ Suppress ───────────────────────────────────────────────────────
+  // Active: intended rows, not already suppressed/rejected/approved+paid
+  const suppressActive = row.type === 'intended' &&
+    !['suppressed', 'rejected'].includes(status) &&
+    !(status === 'approved' && row.paid);
+  const suppressTitle  = suppressActive ? 'Remove from all calculations silently' :
+    row.type !== 'intended'  ? 'Only for intended donation rows' :
+    status === 'suppressed'  ? 'Already suppressed' :
+    status === 'rejected'    ? 'Already rejected' :
+    'Cannot suppress after payment is confirmed';
+  const suppressBtn2   = btn('Suppress', 'suppress', row.id, '', 'btn--danger', suppressActive, suppressTitle);
+
+  // ─ Mark Paid ──────────────────────────────────────────────────────
+  // Active: intended + approved + not yet paid
+  const markPaidActive = row.type === 'intended' && status === 'approved' && !row.paid;
+  const markPaidExtra  = markPaidActive
+    ? `data-amount="${escHtml(String(row.amount || 0))}" data-desc="${escHtml(row.description || '')}" data-submission="${escHtml(row.submission_id)}"`
     : '';
-  const docBtn = row.document_url
-    ? `<button type="button" class="btn btn--small btn--secondary" data-action="viewdoc" data-id="${escHtml(row.id)}" data-path="${escHtml(row.document_url)}">View Doc</button>`
-    : '';
-  const returnBtn = `<button type="button" class="btn btn--small btn--warning" data-action="return" data-id="${escHtml(row.id)}" data-type="${escHtml(row.type)}" data-desc="${escHtml(row.description)}" data-date="${escHtml(row.submitted_at)}">Return</button>`;
+  const markPaidTitle  = markPaidActive ? '' :
+    row.type !== 'intended' ? 'Only for intended donation rows' :
+    row.paid                ? 'Already marked paid' :
+    'Requires Approved status first';
+  const markPaidBtn2   = btn('Mark Paid', 'markpaid', row.id, markPaidExtra, 'btn--success', markPaidActive, markPaidTitle);
+
+  // ─ View Doc ─────────────────────────────────────────────────────────
+  // Active: only when a document_url is present
+  const docActive = !!row.document_url;
+  const docExtra  = docActive ? `data-path="${escHtml(row.document_url)}"` : '';
+  const docTitle  = docActive ? '' : 'No document attached to this submission';
+  const docBtn2   = btn('View Doc', 'viewdoc', row.id, docExtra, 'btn--secondary', docActive, docTitle);
+
+  // ─ Return ───────────────────────────────────────────────────────────
+  // Inactive once already returned, suppressed, or rejected
+  const returnActive = !['returned', 'suppressed', 'rejected'].includes(status);
+  const returnExtra  = `data-type="${escHtml(row.type)}" data-desc="${escHtml(row.description || '')}" data-date="${escHtml(row.submitted_at)}"`;
+  const returnTitle  = returnActive ? '' : `Already ${statusLabel.toLowerCase()} — return not available`;
+  const returnBtn2   = btn('Return', 'return', row.id, returnExtra, 'btn--warning', returnActive, returnTitle);
 
   return `
     <tr data-finance-id="${escHtml(row.id)}">
@@ -187,7 +233,7 @@ function buildRow(row) {
       <td>${escHtml(row.description || '—')}</td>
       <td>${escHtml(amountStr)} ${paidBadge}</td>
       <td><span class="finance-status finance-status--${escHtml(status)}">${escHtml(statusLabel)}</span></td>
-      <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">${promoteBtn}${approveBtn}${suppressBtn}${markPaidBtn}${docBtn}${returnBtn}</td>
+      <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">${promoteBtn}${approveBtn2}${suppressBtn2}${markPaidBtn2}${docBtn2}${returnBtn2}</td>
     </tr>`;
 }
 
@@ -210,7 +256,7 @@ async function handlePromote(btn, id, nextStatus) {
   loadFinancePanel();
 }
 
-// ─── Approve shortcut (intended + self_reported → approved) ──────────────────
+// ─── Approve shortcut ──────────────────────────────────────────────────────────
 
 async function handleApprove(btn, id) {
   if (!confirm('Approve this intended donation directly? This skips the standard verification pipeline.')) return;
@@ -230,7 +276,7 @@ async function handleApprove(btn, id) {
   loadFinancePanel();
 }
 
-// ─── Suppress (intended → suppressed, removed from all calculations) ──────────
+// ─── Suppress ───────────────────────────────────────────────────────────────
 
 async function handleSuppress(btn, id) {
   if (!confirm('Suppress this record? It will be removed from all calculations silently. This cannot be undone from the panel.')) return;
@@ -315,14 +361,12 @@ async function handleMarkPaid() {
     const { intendedAmount, submissionId } = activeMarkPaidRow;
     const diff = paidAmount - intendedAmount;
 
-    // 1. Update original intended record as paid
     const { error: paidError } = await supabase
       .from('community_financials')
       .update({ paid: true, paid_amount: paidAmount, paid_at: new Date().toISOString() })
       .eq('id', activeMarkPaidId);
     if (paidError) throw new Error('Failed to mark paid: ' + paidError.message);
 
-    // 2. Insert variance record if needed
     if (Math.abs(diff) >= 0.01) {
       const varianceType = diff < 0 ? 'intended_lower' : 'intended_higher';
       const varianceDesc = diff < 0
@@ -341,16 +385,13 @@ async function handleMarkPaid() {
         });
       if (varError) throw new Error('Failed to insert variance record: ' + varError.message);
 
-      // 3. If increased intention, celebrate on recognition wall
       if (varianceType === 'intended_higher') {
-        // Find recognition_wall entry linked to same submission and donor
         const { data: wallRows } = await supabase
           .from('recognition_wall')
           .select('id')
           .eq('submission_id', submissionId)
           .order('created_at', { ascending: false })
           .limit(1);
-
         if (wallRows && wallRows.length > 0) {
           await supabase
             .from('recognition_wall')
@@ -471,9 +512,9 @@ function showToast(message, type = 'success') {
     document.body.appendChild(c);
   }
   const t = document.createElement('div');
-  t.className  = `notice notice--${type === 'error' ? 'warning' : 'success'} toast`;
+  t.className     = `notice notice--${type === 'error' ? 'warning' : 'success'} toast`;
   t.style.cssText = 'min-width:260px;max-width:420px;box-shadow:0 4px 20px rgba(0,0,0,.15);';
-  t.textContent = message;
+  t.textContent   = message;
   c.appendChild(t);
   setTimeout(() => t.remove(), 5000);
 }
