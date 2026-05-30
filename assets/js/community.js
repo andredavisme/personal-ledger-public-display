@@ -332,7 +332,7 @@ function initIntentModal() {
             <div id="intent-error" class="donation-message donation-message--error" hidden></div>
             <form id="intent-form" class="donation-form">
               <label><span>Display Name (optional — shown on recognition wall)</span><input type="text" name="donor_name" maxlength="120" /></label>
-              <label><span>Email (optional — for receipt and updates)</span><input type="email" name="donor_email" maxlength="160" /></label>
+              <label><span>Email (optional — if provided, we can notify you if there is an issue with your submission)</span><input type="email" name="donor_email" maxlength="160" /></label>
               <label><span>Intended Amount (USD) <span class="donation-form__hint">Suggested minimum: $15.00</span></span><input type="number" name="amount" min="0.01" step="0.01" required /></label>
               <label><span>Message to Community (optional)</span><textarea name="wall_message" rows="3" maxlength="500"></textarea></label>
               <label class="donation-form__checkbox"><input type="checkbox" name="display_on_wall" /><span>Show my name and message on the recognition wall</span></label>
@@ -480,7 +480,7 @@ async function handleIntentSubmit(event) {
       });
     }
 
-    // 3. Send receipt email (fire-and-forget)
+    // 3. Send donation receipt email (fire-and-forget)
     if (inserted?.id) {
       fetch(`${SUPABASE_URL}/functions/v1/send-donation-receipt`, {
         method:  'POST',
@@ -490,6 +490,18 @@ async function handleIntentSubmit(event) {
         const json = await res.json().catch(() => ({}));
         if (!res.ok || json.ok === false) console.warn('[community] send-donation-receipt non-OK:', json);
       }).catch(err => console.error('[community] send-donation-receipt fetch error:', err));
+    }
+
+    // 4. Send intent thank-you email if donor provided an email (fire-and-forget)
+    if (inserted?.id && donorEmail) {
+      fetch(`${SUPABASE_URL}/functions/v1/send-intent-thank-you`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({ donation_id: inserted.id }),
+      }).then(async res => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json.ok === false) console.warn('[community] send-intent-thank-you non-OK:', json);
+      }).catch(err => console.error('[community] send-intent-thank-you fetch error:', err));
     }
 
     const paymentEl = document.getElementById('intent-confirm-payment');
