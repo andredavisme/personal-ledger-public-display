@@ -2,8 +2,12 @@
  * admin-finance.js — Admin Finance Verification Panel
  *
  * Per-row actions:
- *   Active → full colored button (btn--primary / success / danger / warning / secondary)
- *   Inactive → small dim ghost label (no border, no color, cursor:default, title explains why)
+ *   Active → full colored button
+ *   Inactive → dim ghost label (no border/fill, cursor:default, tooltip explains why)
+ *
+ * Special cases:
+ *   suppressed rows → show active Unsuppress (resets to self_reported)
+ *   returned rows   → Approve is active (direct approve after review)
  */
 
 import supabase from './supabase.js';
@@ -57,6 +61,7 @@ function wireDelegation() {
     if (action === 'promote')                    await handlePromote(btn, id, btn.dataset.next);
     else if (action === 'approve-intent')        await handleApprove(btn, id);
     else if (action === 'suppress')              await handleSuppress(btn, id);
+    else if (action === 'unsuppress')            await handleUnsuppress(btn, id);
     else if (action === 'viewdoc')               await handleViewDoc(btn, btn.dataset.path);
     else if (action === 'return')                { activeReturnId = id; openReturnModal(btn.dataset.type, btn.dataset.desc, btn.dataset.date); }
     else if (action === 'finance-return-send')   { if (activeReturnId) await handleReturn(activeReturnId); }
@@ -138,17 +143,15 @@ async function loadFinancePanel() {
 }
 
 /**
- * Render an action button.
- * active=true  → full colored btn
- * active=false → dim ghost span (no border, no fill, cursor:default)
+ * active=true  → full colored button
+ * active=false → dim ghost span (no border/fill, cursor:default, tooltip)
  */
 function actionBtn(label, action, id, extraData, colorClass, active, title = '') {
   const tip = title ? `title="${escHtml(title)}"` : '';
   if (active) {
     return `<button type="button" class="btn btn--small ${colorClass}" data-action="${action}" data-id="${escHtml(id)}" ${extraData} ${tip}>${label}</button>`;
   }
-  // Inactive: ghost text — present for orientation, invisible as a CTA
-  return `<span class="btn-ghost" data-action="${action}" data-id="${escHtml(id)}" ${tip} style="display:inline-block;padding:0.2rem 0.5rem;font-size:0.72rem;color:#9ca3af;cursor:default;user-select:none;">${label}</span>`;
+  return `<span class="btn-ghost" ${tip} style="display:inline-block;padding:0.2rem 0.5rem;font-size:0.72rem;color:#9ca3af;cursor:default;user-select:none;">${label}</span>`;
 }
 
 function buildRow(row) {
@@ -164,33 +167,41 @@ function buildRow(row) {
     ? `<span class="finance-paid-badge">✓ Paid${row.paid_amount != null ? ` ($${Number(row.paid_amount).toFixed(2)})` : ''}</span>`
     : '';
 
-  // ─ Promote ─────────────────────────────────────────────────────────────────
+  // ─ Promote (pipeline step) ─────────────────────────────────────────────────────
   const promoteActive = !!nextStatus;
   const promoteLabel  = nextStatus ? PROMOTE_LABEL[status] : (isTerminal ? statusLabel : 'Promote');
   const promoteExtra  = nextStatus ? `data-next="${nextStatus}"` : '';
   const promoteTitle  = promoteActive ? '' : (isTerminal ? 'No further pipeline steps' : 'Already at final status');
   const promoteBtn    = actionBtn(promoteLabel, 'promote', row.id, promoteExtra, 'btn--primary', promoteActive, promoteTitle);
 
-  // ─ Approve shortcut ────────────────────────────────────────────────────────
-  const approveActive = row.type === 'intended' && status === 'self_reported';
-  const approveTitle  = approveActive ? 'Skip pipeline — approve directly' :
-    row.type !== 'intended' ? 'Intended rows only' :
-    status === 'approved'   ? 'Already approved' :
-    'Available at Self-Reported status';
+  // ─ Approve ────────────────────────────────────────────────────────────────
+  // Active for: intended+self_reported (shortcut), OR any returned row (rescue after review)
+  const approveActive = (row.type === 'intended' && status === 'self_reported') || status === 'returned';
+  const approveTitle  = approveActive
+    ? (status === 'returned' ? 'Approve directly after review' : 'Skip pipeline — approve directly')
+    : (row.type !== 'intended' && status !== 'returned') ? 'Intended rows or returned rows only'
+    : status === 'approved' ? 'Already approved'
+    : 'Available at Self-Reported or Returned status';
   const approveBtn    = actionBtn('Approve', 'approve-intent', row.id, '', 'btn--success', approveActive, approveTitle);
 
-  // ─ Suppress ────────────────────────────────────────────────────────────────
-  const suppressActive = row.type === 'intended' &&
-    !['suppressed', 'rejected'].includes(status) &&
-    !(status === 'approved' && row.paid);
-  const suppressTitle  = suppressActive ? 'Remove from all calculations silently' :
-    row.type !== 'intended' ? 'Intended rows only' :
-    status === 'suppressed' ? 'Already suppressed' :
-    status === 'rejected'   ? 'Already rejected' :
-    'Cannot suppress after payment confirmed';
-  const suppressBtn    = actionBtn('Suppress', 'suppress', row.id, '', 'btn--danger', suppressActive, suppressTitle);
+  // ─ Suppress / Unsuppress ──────────────────────────────────────────────────
+  // Suppressed rows get an Unsuppress button instead; all other intended rows get Suppress
+  let suppressOrUnsuppressBtn;
+  if (status === 'suppressed') {
+    // Unsuppress: resets to self_reported for re-review
+    suppressOrUnsuppressBtn = actionBtn('Unsuppress', 'unsuppress', row.id, '', 'btn--secondary', true, 'Restore to Self-Reported for re-review');
+  } else {
+    const suppressActive = row.type === 'intended' &&
+      !['rejected'].includes(status) &&
+      !(status === 'approved' && row.paid);
+    const suppressTitle  = suppressActive ? 'Remove from all calculations silently' :
+      row.type !== 'intended' ? 'Intended rows only' :
+      status === 'rejected'   ? 'Already rejected' :
+      'Cannot suppress after payment confirmed';
+    suppressOrUnsuppressBtn = actionBtn('Suppress', 'suppress', row.id, '', 'btn--danger', suppressActive, suppressTitle);
+  }
 
-  // ─ Mark Paid ───────────────────────────────────────────────────────────────
+  // ─ Mark Paid ──────────────────────────────────────────────────────────────
   const markPaidActive = row.type === 'intended' && status === 'approved' && !row.paid;
   const markPaidExtra  = markPaidActive
     ? `data-amount="${escHtml(String(row.amount || 0))}" data-desc="${escHtml(row.description || '')}" data-submission="${escHtml(row.submission_id)}"`
@@ -201,13 +212,13 @@ function buildRow(row) {
     'Requires Approved status first';
   const markPaidBtn    = actionBtn('Mark Paid', 'markpaid', row.id, markPaidExtra, 'btn--success', markPaidActive, markPaidTitle);
 
-  // ─ View Doc ─────────────────────────────────────────────────────────────────
+  // ─ View Doc ────────────────────────────────────────────────────────────────
   const docActive = !!row.document_url;
   const docExtra  = docActive ? `data-path="${escHtml(row.document_url)}"` : '';
   const docTitle  = docActive ? '' : 'No document attached';
   const docBtn    = actionBtn('View Doc', 'viewdoc', row.id, docExtra, 'btn--secondary', docActive, docTitle);
 
-  // ─ Return ───────────────────────────────────────────────────────────────────
+  // ─ Return ──────────────────────────────────────────────────────────────────
   const returnActive = !['returned', 'suppressed', 'rejected'].includes(status);
   const returnExtra  = `data-type="${escHtml(row.type)}" data-desc="${escHtml(row.description || '')}" data-date="${escHtml(row.submitted_at)}"`;
   const returnTitle  = returnActive ? '' : `Already ${statusLabel.toLowerCase()} — return not available`;
@@ -223,7 +234,7 @@ function buildRow(row) {
       <td><span class="finance-status finance-status--${escHtml(status)}">${escHtml(statusLabel)}</span></td>
       <td>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.35rem 0.5rem;align-items:center;min-width:200px;">
-          ${promoteBtn}${approveBtn}${suppressBtn}${markPaidBtn}${docBtn}${returnBtn}
+          ${promoteBtn}${approveBtn}${suppressOrUnsuppressBtn}${markPaidBtn}${docBtn}${returnBtn}
         </div>
       </td>
     </tr>`;
@@ -248,10 +259,10 @@ async function handlePromote(btn, id, nextStatus) {
   loadFinancePanel();
 }
 
-// ─── Approve shortcut ────────────────────────────────────────────────────────
+// ─── Approve (intended shortcut OR post-return rescue) ─────────────────────────────
 
 async function handleApprove(btn, id) {
-  if (!confirm('Approve this intended donation directly? This skips the standard verification pipeline.')) return;
+  if (!confirm('Approve this record directly?')) return;
   btn.disabled    = true;
   btn.textContent = 'Approving…';
   const { error } = await supabase
@@ -264,14 +275,14 @@ async function handleApprove(btn, id) {
     btn.textContent = 'Approve';
     return;
   }
-  showToast('Intended donation approved.', 'success');
+  showToast('Record approved.', 'success');
   loadFinancePanel();
 }
 
 // ─── Suppress ────────────────────────────────────────────────────────────────
 
 async function handleSuppress(btn, id) {
-  if (!confirm('Suppress this record? It will be removed from all calculations silently. This cannot be undone from the panel.')) return;
+  if (!confirm('Suppress this record? It will be removed from all calculations silently.')) return;
   btn.disabled    = true;
   btn.textContent = 'Suppressing…';
   const { error } = await supabase
@@ -284,7 +295,27 @@ async function handleSuppress(btn, id) {
     btn.textContent = 'Suppress';
     return;
   }
-  showToast('Record suppressed and removed from calculations.', 'success');
+  showToast('Record suppressed.', 'success');
+  loadFinancePanel();
+}
+
+// ─── Unsuppress ───────────────────────────────────────────────────────────────
+
+async function handleUnsuppress(btn, id) {
+  if (!confirm('Restore this record to Self-Reported for re-review?')) return;
+  btn.disabled    = true;
+  btn.textContent = 'Restoring…';
+  const { error } = await supabase
+    .from('community_financials')
+    .update({ status: 'self_reported' })
+    .eq('id', id);
+  if (error) {
+    showToast('Unsuppress failed: ' + error.message, 'error');
+    btn.disabled    = false;
+    btn.textContent = 'Unsuppress';
+    return;
+  }
+  showToast('Record restored to Self-Reported.', 'success');
   loadFinancePanel();
 }
 
