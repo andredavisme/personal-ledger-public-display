@@ -6,6 +6,8 @@
  *
  * Per-row actions:
  *   - Promote status: pending → self_reported → verified → approved
+ *   - Approve (shortcut): intended + self_reported → approved directly
+ *   - Suppress: sets status = 'suppressed', removes from all calculations
  *   - Mark Paid (intended + approved only): sets paid=true, paid_amount,
  *     auto-inserts intended_lower or intended_higher variance record,
  *     promotes wall entry to sort_order=0 + featured=true for intended_higher
@@ -24,6 +26,7 @@ const STATUS_LABEL = {
   verified:      'Verified',
   approved:      'Approved',
   returned:      'Returned',
+  suppressed:    'Suppressed',
 };
 const PROMOTE_LABEL = {
   pending:       'Mark Self-Reported',
@@ -60,6 +63,8 @@ function wireDelegation() {
     const id     = btn.dataset.id;
 
     if (action === 'promote')              await handlePromote(btn, id, btn.dataset.next);
+    else if (action === 'approve-intent')  await handleApprove(btn, id);
+    else if (action === 'suppress')        await handleSuppress(btn, id);
     else if (action === 'viewdoc')         await handleViewDoc(btn, btn.dataset.path);
     else if (action === 'return')          { activeReturnId = id; openReturnModal(btn.dataset.type, btn.dataset.desc, btn.dataset.date); }
     else if (action === 'finance-return-send')   { if (activeReturnId) await handleReturn(activeReturnId); }
@@ -151,9 +156,21 @@ function buildRow(row) {
   const nextStatus  = STATUS_NEXT[status];
   const paidBadge   = row.paid ? `<span class="finance-paid-badge">✓ Paid${row.paid_amount != null ? ` ($${Number(row.paid_amount).toFixed(2)})` : ''}</span>` : '';
 
+  // Standard promote button (pipeline step)
   const promoteBtn = nextStatus
     ? `<button type="button" class="btn btn--small btn--primary" data-action="promote" data-id="${escHtml(row.id)}" data-next="${nextStatus}">${PROMOTE_LABEL[status]}</button>`
     : '';
+
+  // Approve shortcut — only for intended rows that are self_reported (donor-submitted, skip pipeline)
+  const approveBtn = (row.type === 'intended' && status === 'self_reported')
+    ? `<button type="button" class="btn btn--small btn--success" data-action="approve-intent" data-id="${escHtml(row.id)}" title="Skip pipeline and approve directly">Approve</button>`
+    : '';
+
+  // Suppress — only for intended rows that are not already suppressed, rejected, or approved+paid
+  const suppressBtn = (row.type === 'intended' && !['suppressed', 'rejected'].includes(status) && !(status === 'approved' && row.paid))
+    ? `<button type="button" class="btn btn--small btn--danger" data-action="suppress" data-id="${escHtml(row.id)}" title="Remove from all calculations silently">Suppress</button>`
+    : '';
+
   const markPaidBtn = (row.type === 'intended' && status === 'approved' && !row.paid)
     ? `<button type="button" class="btn btn--small btn--success" data-action="markpaid" data-id="${escHtml(row.id)}" data-amount="${escHtml(String(row.amount || 0))}" data-desc="${escHtml(row.description || '')}" data-submission="${escHtml(row.submission_id)}">Mark Paid</button>`
     : '';
@@ -170,7 +187,7 @@ function buildRow(row) {
       <td>${escHtml(row.description || '—')}</td>
       <td>${escHtml(amountStr)} ${paidBadge}</td>
       <td><span class="finance-status finance-status--${escHtml(status)}">${escHtml(statusLabel)}</span></td>
-      <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">${promoteBtn}${markPaidBtn}${docBtn}${returnBtn}</td>
+      <td style="display:flex;gap:0.5rem;flex-wrap:wrap;">${promoteBtn}${approveBtn}${suppressBtn}${markPaidBtn}${docBtn}${returnBtn}</td>
     </tr>`;
 }
 
@@ -190,6 +207,46 @@ async function handlePromote(btn, id, nextStatus) {
     return;
   }
   showToast(`Status updated to ${STATUS_LABEL[nextStatus]}.`, 'success');
+  loadFinancePanel();
+}
+
+// ─── Approve shortcut (intended + self_reported → approved) ──────────────────
+
+async function handleApprove(btn, id) {
+  if (!confirm('Approve this intended donation directly? This skips the standard verification pipeline.')) return;
+  btn.disabled    = true;
+  btn.textContent = 'Approving…';
+  const { error } = await supabase
+    .from('community_financials')
+    .update({ status: 'approved' })
+    .eq('id', id);
+  if (error) {
+    showToast('Approve failed: ' + error.message, 'error');
+    btn.disabled    = false;
+    btn.textContent = 'Approve';
+    return;
+  }
+  showToast('Intended donation approved.', 'success');
+  loadFinancePanel();
+}
+
+// ─── Suppress (intended → suppressed, removed from all calculations) ──────────
+
+async function handleSuppress(btn, id) {
+  if (!confirm('Suppress this record? It will be removed from all calculations silently. This cannot be undone from the panel.')) return;
+  btn.disabled    = true;
+  btn.textContent = 'Suppressing…';
+  const { error } = await supabase
+    .from('community_financials')
+    .update({ status: 'suppressed' })
+    .eq('id', id);
+  if (error) {
+    showToast('Suppress failed: ' + error.message, 'error');
+    btn.disabled    = false;
+    btn.textContent = 'Suppress';
+    return;
+  }
+  showToast('Record suppressed and removed from calculations.', 'success');
   loadFinancePanel();
 }
 
